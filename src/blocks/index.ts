@@ -1,0 +1,18 @@
+import { registerBlock } from './registry.ts';
+import TextBlock from './text/TextBlock.svelte';
+import CalloutBlock from './callout/CalloutBlock.svelte';
+import VideoBlock from './video/VideoBlock.svelte';
+import ImageBlock from './image/ImageBlock.svelte';
+import QuizBlock from './quiz/QuizBlock.svelte';
+import ExampleBlock from './example/ExampleBlock.svelte';
+import FlashcardsBlock from './flashcards/FlashcardsBlock.svelte';
+
+registerBlock('text', TextBlock);
+registerBlock('callout', CalloutBlock);
+registerBlock('video', VideoBlock);
+registerBlock('image', ImageBlock);
+registerBlock('quiz', QuizBlock);
+registerBlock('example', ExampleBlock);
+registerBlock('flashcards', FlashcardsBlock);
+registerBlock('module-test', QuizBlock);
+registerBlock('final-exam', QuizBlock);

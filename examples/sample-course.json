@@ -1,0 +1,168 @@
+{
+  "schemaVersion": 1,
+  "id": "networking-basics",
+  "title": "Networking basics",
+  "subject": "Networks",
+  "level": "Beginner",
+  "language": "en",
+  "version": 1,
+  "meta": { "createdBy": "sample", "createdAt": "2026-10-10", "tags": ["networks", "it"] },
+  "modules": [
+    {
+      "id": "m1",
+      "title": "How computers talk",
+      "summary": "What a network is, how devices are addressed, and how data travels in layers.",
+      "lessons": [
+        {
+          "id": "m1-l1",
+          "title": "What is a network?",
+          "goal": "Explain what a network is and tell IP addresses and MAC addresses apart.",
+          "blocks": [
+            {
+              "id": "m1-l1-b1",
+              "type": "text",
+              "levels": {
+                "normal": "A **network** is a group of devices that can exchange data. Each device needs an address so data reaches the right place. Two address types matter at the start:\n\n- A **MAC address** is a hardware address (48 bits) that belongs to the network card.\n- An **IP address** is a logical address that identifies a device in a network and can change.\n\nIn a *client-server* setup, clients ask for something and a server answers.",
+                "simple": "A network is just devices that can send data to each other. Every device has two kinds of address: a MAC address stuck to its network card, and an IP address that the network gives it. Think of the MAC as your name and the IP as where you live right now.",
+                "detailed": "A **network** connects devices (hosts) over a shared medium so they can exchange data using agreed rules called protocols.\n\n**MAC address**: 48 bits, usually written as six hex pairs (for example `00:1A:2B:3C:4D:5E`). It is assigned to the network interface and is used for delivery inside one local network segment. Switches forward frames using MAC addresses.\n\n**IP address**: a logical address used for delivery between networks. IPv4 uses 32 bits, IPv6 uses 128 bits. It can change, for example when you join another Wi-Fi.\n\n**Client-server**: a client sends requests and a server provides a service, such as a web server answering a browser."
+              }
+            },
+            {
+              "id": "m1-l1-b2",
+              "type": "callout",
+              "style": "keypoint",
+              "markdown": "MAC address = hardware, local delivery. IP address = logical, delivery across networks."
+            },
+            {
+              "id": "m1-l1-b3",
+              "type": "video",
+              "url": "https://www.youtube.com/watch?v=UjOXLg7HauQ",
+              "title": "MAC address vs. IP address: what's the difference?"
+            },
+            {
+              "id": "m1-l1-b4",
+              "type": "quiz",
+              "language": "de",
+              "questions": [
+                {
+                  "id": "q-m1-l1-1",
+                  "kind": "multiple-choice",
+                  "prompt": "Welche Adresse ist fest an die Netzwerkkarte gebunden?",
+                  "options": ["IP-Adresse", "MAC-Adresse", "Domainname", "Portnummer"],
+                  "answer": 1,
+                  "explanation": "Die MAC-Adresse gehört zur Hardware der Netzwerkkarte."
+                },
+                {
+                  "id": "q-m1-l1-2",
+                  "kind": "true-false",
+                  "prompt": "Ein Switch leitet Daten im lokalen Netz hauptsächlich anhand von MAC-Adressen weiter.",
+                  "answer": true,
+                  "explanation": "Ein Switch arbeitet auf der Sicherungsschicht und nutzt MAC-Adressen."
+                }
+              ]
+            },
+            {
+              "id": "m1-l1-b5",
+              "type": "flashcards",
+              "cards": [
+                { "front": "What does a MAC address identify?", "back": "A network interface on the local network; it is commonly assigned to the hardware." },
+                { "front": "What does an IP address help do?", "back": "Identify a device logically so data can be routed between networks." }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "m1-l2",
+          "title": "The TCP/IP layers",
+          "goal": "Name the four TCP/IP layers and place common protocols in them.",
+          "blocks": [
+            {
+              "id": "m1-l2-b1",
+              "type": "text",
+              "levels": {
+                "normal": "The **TCP/IP model** splits communication into four layers. Each layer has one job and talks to the layer above and below it.\n\n1. **Application**: protocols programs use, like HTTP, DNS, SMTP.\n2. **Transport**: delivery between programs, using ports. TCP is reliable, UDP is fast and simple.\n3. **Internet**: addressing and routing with IP.\n4. **Network access** (link): sending bits over the physical medium inside one network.",
+                "simple": "Sending data is split into four steps, like a parcel service: write the letter (Application), pick the delivery method and the apartment door number (Transport), put the street address on it (Internet), and drive it down the actual road (Network access)."
+              }
+            },
+            {
+              "id": "m1-l2-b2",
+              "type": "callout",
+              "style": "tip",
+              "markdown": "Memory hook: data travels **down** the layers on the sender's side and **up** the layers on the receiver's side."
+            },
+            {
+              "id": "m1-l2-b3",
+              "type": "example",
+              "markdown": "Opening a web page: the browser uses HTTP (application), TCP on port 443 (transport), IP (internet), and Ethernet or Wi-Fi (network access)."
+            },
+            {
+              "id": "m1-l2-b4",
+              "type": "quiz",
+              "language": "de",
+              "questions": [
+                {
+                  "id": "q-m1-l2-1",
+                  "kind": "multiple-choice",
+                  "prompt": "Welche Schicht des TCP/IP-Modells ist für die Adressierung mit IP-Adressen zuständig?",
+                  "options": ["Anwendungsschicht", "Transportschicht", "Internetschicht", "Netzzugangsschicht"],
+                  "answer": 2,
+                  "explanation": "IP arbeitet auf der Internetschicht."
+                },
+                {
+                  "id": "q-m1-l2-2",
+                  "kind": "true-false",
+                  "prompt": "HTTP gehört zur Anwendungsschicht.",
+                  "answer": true,
+                  "explanation": "HTTP ist ein Protokoll der Anwendungsschicht."
+                },
+                {
+                  "id": "q-m1-l2-3",
+                  "kind": "short-answer",
+                  "prompt": "Wie heißt das System, das Domainnamen in IP-Adressen übersetzt? (Abkürzung)",
+                  "answer": ["DNS"],
+                  "explanation": "DNS steht für Domain Name System."
+                },
+                {
+                  "id": "q-m1-l2-4",
+                  "kind": "fill-blank",
+                  "prompt": "Eine IPv4-Adresse besteht aus ___ Bit.",
+                  "answer": ["32"],
+                  "explanation": "IPv4 nutzt 32 Bit, IPv6 nutzt 128 Bit."
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "test": {
+        "id": "m1-test",
+        "type": "module-test",
+        "language": "de",
+        "questions": [
+          {
+            "id": "q-m1-t1",
+            "kind": "multiple-choice",
+            "prompt": "Welche Schicht verwendet Portnummern, um Programme zu unterscheiden?",
+            "options": ["Anwendungsschicht", "Transportschicht", "Internetschicht", "Netzzugangsschicht"],
+            "answer": 1,
+            "explanation": "Ports gehören zur Transportschicht (TCP und UDP)."
+          },
+          {
+            "id": "q-m1-t2",
+            "kind": "true-false",
+            "prompt": "Eine MAC-Adresse hat 48 Bit.",
+            "answer": true,
+            "explanation": "Sie wird meist als sechs Hex-Paare geschrieben."
+          },
+          {
+            "id": "q-m1-t3",
+            "kind": "short-answer",
+            "prompt": "Wofür steht die Abkürzung IP?",
+            "answer": ["Internet Protocol"],
+            "explanation": "IP ist das Internet Protocol."
+          }
+        ]
+      }
+    }
+  ]
+}

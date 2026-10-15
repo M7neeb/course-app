@@ -1,0 +1,184 @@
+<script lang="ts">
+  // Home ("My courses"): a streak bar under the header, a grey profile
+  // band, then the learner sidebar beside a two-column grid of course groups. Each group lists its
+  // units on a timeline with the unit's mastery line, and the unit the learner is in gets Resume.
+  // The data model calls units `modules`; the UI says units.
+  import { app, displayTitle, moduleMasteryPercentFor, navigate } from '../../core/state.svelte.ts';
+  import { computeStats, dayKey } from '../../core/activity.ts';
+  import { tierForPoints } from '../../core/mastery.ts';
+  import {
+    courseAccent,
+    entryModuleId,
+    greetingFor,
+    homeBadges,
+    moduleStatus,
+    skillsProgress,
+    streakWeeks,
+    type ModuleStatus
+  } from '../../core/home.ts';
+  import type { Course, Module } from '../../core/types.ts';
+  import LearnerNav from '../../ui/LearnerNav.svelte';
+  import MasteryIcon from '../../ui/MasteryIcon.svelte';
+  import NavIcon from '../../ui/NavIcon.svelte';
+  import { t } from '../../i18n/i18n.ts';
+
+  /** Unit rows shown before "See all" reveals the rest. */
+  const MODULE_LIMIT = 5;
+
+  const today = $derived(dayKey(new Date()));
+  const stats = $derived(computeStats(app.activity, today));
+  const greeting = $derived(greetingFor(today, stats.streak));
+  const weeks = $derived(streakWeeks(stats.streak));
+
+  const displayName = $derived(app.settings.profileName.trim() || t('profile.defaultName'));
+  const initials = $derived(
+    displayName.split(/\s+/).slice(0, 2).map((part) => part.charAt(0)).join('').toLocaleUpperCase()
+  );
+  const username = $derived((app.settings.username ?? '').trim());
+  const bio = $derived((app.settings.bio ?? '').trim());
+
+  const activeCourses = $derived(app.courses.filter((course) => !app.meta[course.id]?.archived));
+  const courses = $derived.by(() =>
+    [...activeCourses].sort(
+      (a, b) =>
+        (app.progress[b.id]?.lastOpened ?? '').localeCompare(app.progress[a.id]?.lastOpened ?? '') ||
+        displayTitle(a).localeCompare(displayTitle(b), app.settings.uiLanguage)
+    )
+  );
+  const skills = $derived(skillsProgress(activeCourses, app.mastery));
+  const badges = $derived(
+    homeBadges({
+      streak: stats.streak,
+      level: stats.level,
+      activeDays: stats.activeDays,
+      courses: activeCourses,
+      mastery: app.mastery
+    })
+  );
+  const masteredCount = $derived(badges.find((badge) => badge.id === 'mastered')?.count ?? 0);
+  const familiarCount = $derived(badges.find((badge) => badge.id === 'familiar')?.count ?? 0);
+
+  let expanded = $state<Record<string, boolean>>({});
+
+  function openModule(course: Course, module: Module) {
+    navigate({ name: 'unit', courseId: course.id, moduleId: module.id });
+    window.scrollTo({ top: 0 });
+  }
+
+  function modulesOf(course: Course): Module[] {
+    return expanded[course.id] ? course.modules : course.modules.slice(0, MODULE_LIMIT);
+  }
+
+  function statusText(status: ModuleStatus): string {
+    return status.tierKey ? t(status.key, { percent: status.percent, tier: t(status.tierKey) }) : '';
+  }
+</script>
+
+<div class="cf-streakbar">
+  <div class="cf-container cf-streakbar-inner">
+    <p class="cf-streak-greeting">{t(greeting.key, greeting.vars)}</p>
+    <div class="cf-streak-stats">
+      <span class="cf-streak-count">
+        <span class="cf-flame"><NavIcon name="flame" size={22} /></span>
+        <strong>{weeks}</strong>
+        <span class="cf-streak-unit">{t('home.weekStreakUnit')}</span>
+      </span>
+      <span class="cf-level">
+        <span class="cf-level-label">
+          {t('home.level', { n: stats.level })}
+          <span class="cf-info" title={t('home.levelInfo', { n: stats.xpToNext ?? 0 })} aria-label={t('home.levelInfo', { n: stats.xpToNext ?? 0 })}>i</span>
+        </span>
+        <span class="cf-level-row">
+          <span class="cf-progress" role="progressbar" aria-valuenow={skills.done} aria-valuemin="0" aria-valuemax={Math.max(1, skills.total)}>
+            <span style:width={skills.percent + '%'}></span>
+          </span>
+          <span class="cf-level-skills">{t('home.skills', { done: skills.done, total: skills.total })}</span>
+        </span>
+      </span>
+    </div>
+  </div>
+</div>
+
+<div class="cf-profile-band">
+  <div class="cf-container cf-profile-inner">
+    <span class="cf-avatar" style:background={app.settings.profileColor}>{initials}</span>
+    <div class="cf-identity">
+      <h1>{displayName}</h1>
+      <p>
+        <button type="button" class="cf-link-plain" onclick={() => navigate({ name: 'profile' })}>{username || t('home.pickUsername')}</button>
+        <span aria-hidden="true"> - </span>
+        <button type="button" class="cf-link-underline" onclick={() => navigate({ name: 'profile' })}>{bio || t('home.addBio')}</button>
+      </p>
+    </div>
+    <div class="cf-profile-side">
+      <button type="button" class="cf-btn cf-btn-secondary" onclick={() => navigate({ name: 'profile' })}>{t('home.editProfile')}</button>
+      <div class="cf-profile-stats">
+        <span class="cf-points" title={t('home.energyPoints')}>{stats.totalXp.toLocaleString(app.settings.uiLanguage)}</span>
+        <span class="cf-stat" title={t('mastery.tier.mastered')}><MasteryIcon tier="mastered" size={16} />{masteredCount}</span>
+        <span class="cf-stat" title={t('home.badge.familiar')}><MasteryIcon tier="familiar" size={16} />{familiarCount}</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="cf-page cf-with-nav">
+  <LearnerNav />
+  <main class="cf-main">
+    <div class="cf-section-head">
+      <h1>{t('home.myCourses')}</h1>
+      {#if courses.length > 0}
+        <button type="button" class="cf-btn cf-btn-primary" onclick={() => navigate({ name: 'library' })}>{t('home.editCourses')}</button>
+      {/if}
+    </div>
+
+    {#if courses.length === 0}
+      <div class="cf-empty">
+        <h2>{t('home.empty')}</h2>
+        <p>{t('home.emptyHint')}</p>
+        <div class="cf-actions">
+          <button type="button" class="cf-btn cf-btn-primary" onclick={() => navigate({ name: 'import' })}>{t('home.import')}</button>
+          <button type="button" class="cf-btn cf-btn-secondary" onclick={() => navigate({ name: 'prompt' })}>{t('home.create')}</button>
+        </div>
+      </div>
+    {:else}
+      <div class="cf-course-grid">
+        {#each courses as course (course.id)}
+          {@const entryId = entryModuleId(course, app.progress[course.id])}
+          {@const accent = courseAccent(course.id)}
+          <section class="cf-course-group">
+            <header>
+              <h2>{displayTitle(course)}</h2>
+              {#if course.modules.length > MODULE_LIMIT}
+                <button type="button" class="cf-link" onclick={() => (expanded[course.id] = !expanded[course.id])}>
+                  {expanded[course.id] ? t('home.showLess') : t('home.seeAll', { n: course.modules.length })}
+                </button>
+              {/if}
+            </header>
+            {#if course.modules.length === 0}
+              <p class="cf-muted">{t('home.noModules')}</p>
+            {:else}
+              <ol class="cf-timeline">
+                {#each modulesOf(course) as module, index (module.id)}
+                  {@const percent = moduleMasteryPercentFor(course.id, module.id)}
+                  {@const status = moduleStatus(percent, tierForPoints(percent), module.test !== undefined)}
+                  <li>
+                    <span class="cf-unit-dot" style:background={accent} aria-hidden="true">{index + 1}</span>
+                    <div class="cf-unit-text">
+                      <button type="button" class="cf-link cf-unit-link" onclick={() => openModule(course, module)}>{module.title}</button>
+                      {#if statusText(status)}<span class="cf-unit-status">{statusText(status)}</span>{/if}
+                    </div>
+                    {#if module.id === entryId}
+                      <button type="button" class="cf-btn cf-btn-primary cf-btn-small" onclick={() => openModule(course, module)}>
+                        {app.progress[course.id] ? t('home.resume') : t('home.start')}
+                      </button>
+                    {/if}
+                  </li>
+                {/each}
+              </ol>
+            {/if}
+          </section>
+        {/each}
+      </div>
+    {/if}
+  </main>
+</div>
