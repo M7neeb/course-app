@@ -1,10 +1,12 @@
 <script lang="ts">
   import { untrack } from 'svelte';
-  import type { Block, BlockContext, Question } from '../../core/types.ts';
+  import type { AnswerRecord, Block, BlockContext, Confidence, Question } from '../../core/types.ts';
   import { gradeAnswer, multiSelectOutcome } from '../../core/grade.ts';
   import { renderMarkdown } from '../../core/markdown.ts';
   import { rationaleFor, resolveQuestions } from '../../core/localize.ts';
   import { tierForPoints } from '../../core/mastery.ts';
+  import { tutorPrompt } from '../../core/promptBuilder.ts';
+  import { copyText } from '../../ui/clipboard.ts';
   import { t } from '../../i18n/i18n.ts';
 
   let { block, ctx }: { block: Block; ctx: BlockContext } = $props();
@@ -12,6 +14,17 @@
   // Questions are resolved for the chosen question language before anything is rendered or graded.
   const questions = $derived(resolveQuestions(block, ctx.questionLanguage));
   const lang = $derived(typeof block.language === 'string' ? block.language : undefined);
+  // A warm-up (pretest) quiz: guess before the lesson. One guess per question, the answer is shown
+  // straight away, and nothing is saved - it never counts for mastery or review.
+  const pretest = $derived(block.pretest === true);
+  let localAnswers = $state<Record<string, AnswerRecord>>({});
+  function answerOf(id: string): AnswerRecord | undefined {
+    return pretest ? localAnswers[id] : ctx.getAnswer(id);
+  }
+  // "How sure are you?" per question, and which tutor prompt was just copied.
+  let confidence = $state<Record<string, Confidence>>({});
+  let tutorCopied = $state<string | null>(null);
+  const CONFIDENCE: Confidence[] = ['sure', 'unsure', 'guess'];
 
   // One question at a time. `drillIds` narrows the run to just the mistakes after a set is done.
   let drillIds = $state<string[] | null>(null);
@@ -33,9 +46,11 @@
 
   const current = $derived(active[index] as Question | undefined);
   const finished = $derived(active.length > 0 && index >= active.length);
-  const currentRecord = $derived(current ? ctx.getAnswer(current.id) : undefined);
-  const answeredCorrect = $derived(currentRecord?.correct === true);
-  const showWrong = $derived(currentRecord !== undefined && currentRecord.correct === false);
+  const currentRecord = $derived(current ? answerOf(current.id) : undefined);
+  // In a warm-up any guess finishes the question; elsewhere you retry until you are right.
+  const answeredCorrect = $derived(pretest ? currentRecord !== undefined : currentRecord?.correct === true);
+  const showWrong = $derived(!pretest && currentRecord !== undefined && currentRecord.correct === false);
+  const confidentMiss = $derived(showWrong && current !== undefined && confidence[current.id] === 'sure');
   const partialMulti = $derived(
     current !== undefined && current.kind === 'multi-select' && multiSelectOutcome(current, draftOf(current)) === 'partial'
   );
@@ -55,7 +70,7 @@
         if (!ids.includes(id)) ids.push(id);
       }
       const snapshot: Record<string, number> = {};
-      for (const id of ids) snapshot[id] = ctx.getSkillMastery(id)?.points ?? 0;
+      for (const id of ids) snapshot[id] = pointsOf(id);
       runSkills = ids;
       beforeSkills = snapshot;
     });
@@ -66,14 +81,14 @@
   const shownHints = $derived(hintSteps.slice(0, Math.min(hintStep, hintSteps.length)));
   const solutionShown = $derived(hintStep > hintSteps.length);
 
-  const solvedFirstTry = $derived(active.filter((q) => ctx.getAnswer(q.id)?.solvedOnFirstTry === true).length);
+  const solvedFirstTry = $derived(active.filter((q) => answerOf(q.id)?.solvedOnFirstTry === true).length);
   const accuracy = $derived(active.length === 0 ? 0 : Math.round((solvedFirstTry / active.length) * 100));
   const deltas = $derived(
     runSkills.map((id) => ({
       skillId: id,
       title: ctx.skillTitleFor(id),
       before: beforeSkills[id] ?? 0,
-      after: ctx.getSkillMastery(id)?.points ?? 0
+      after: pointsOf(id)
     }))
   );
   const modulePercent = $derived(ctx.moduleId ? ctx.getModuleMasteryPercent(ctx.moduleId) : 0);
@@ -82,6 +97,10 @@
       .map((m) => ({ question: active.find((q) => q.id === m.questionId), given: m.given }))
       .filter((m): m is { question: Question; given: unknown } => m.question !== undefined)
   );
+
+  function pointsOf(skillId: string): number {
+    return ctx.getSkillPoints ? ctx.getSkillPoints(skillId) : (ctx.getSkillMastery(skillId)?.points ?? 0);
+  }
 
   function stepsFor(q: Question): string[] {
     if (Array.isArray(q.hints) && q.hints.length > 0) return q.hints;
@@ -233,19 +252,24 @@
   function check(q: Question) {
     const given = draftOf(q);
     const correct = gradeAnswer(q, given);
-    const previous = ctx.getAnswer(q.id);
+    const previous = answerOf(q.id);
     const usedHint = hinted[q.id] === true;
     // First try means: correct, no hint, and no earlier wrong attempt on this question.
     const firstTry = (previous?.solvedOnFirstTry ?? true) && correct && !usedHint && missed[q.id] !== true;
-
-    ctx.recordAnswer(q.id, {
+    const record: AnswerRecord = {
       given,
       correct,
       at: new Date().toISOString(),
       attempts: (previous?.attempts ?? 0) + 1,
       solvedOnFirstTry: firstTry
-    });
-    ctx.recordMasteryAttempt({ questionId: q.id, correct, usedHint, given });
+    };
+
+    if (pretest) {
+      localAnswers[q.id] = record;
+      return;
+    }
+    ctx.recordAnswer(q.id, record);
+    ctx.recordMasteryAttempt({ questionId: q.id, correct, usedHint, given, confidence: confidence[q.id] });
 
     if (!correct) {
       missed[q.id] = true;
@@ -254,6 +278,13 @@
         ? misses.map((m) => (m.questionId === q.id ? { questionId: q.id, given } : m))
         : [...misses, { questionId: q.id, given }];
     }
+  }
+
+  async function askTutor(q: Question) {
+    const record = answerOf(q.id);
+    const given = record && record.correct === false ? givenText(q, record.given) : undefined;
+    const text = tutorPrompt(ctx.courseTitle ?? '', { prompt: q.prompt, options: q.options }, ctx.questionLanguage, given);
+    if (await copyText(text)) tutorCopied = q.id;
   }
 
   function nextHint(q: Question) {
@@ -279,7 +310,12 @@
 </script>
 
 <section class="block quiz" {lang}>
-  {#if finished}
+  {#if finished && pretest}
+    <div class="quiz-results warmup-done" role="status">
+      <p class="results-kicker">{t('quiz.warmup')}</p>
+      <p>{t('quiz.warmupDone')}</p>
+    </div>
+  {:else if finished}
     <div class="quiz-results" role="region" aria-label={t('results.title')}>
       <p class="results-kicker">{t('results.title')}</p>
       <p class="results-score">{t('results.firstTry', { correct: solvedFirstTry, total: active.length })}</p>
@@ -341,10 +377,13 @@
       </div>
     </div>
   {:else if current}
+    {#if pretest}
+      <p class="warmup-label"><strong>{t('quiz.warmup')}</strong> <span class="muted">{t('quiz.warmupIntro')}</span></p>
+    {/if}
     <p class="quiz-progress muted small">
       {t('quiz.questionOf', { current: index + 1, total: active.length })}
       <span class="quiz-running-score">
-        {t('quiz.score', { correct: active.filter((q) => ctx.getAnswer(q.id)?.correct).length, total: active.length })}
+        {t('quiz.score', { correct: active.filter((q) => answerOf(q.id)?.correct).length, total: active.length })}
       </span>
     </p>
 
@@ -359,6 +398,9 @@
               <span class="rationale-label">{t('quiz.rationale')}:</span>
               {currentRationale}
             </p>
+          {/if}
+          {#if confidentMiss}
+            <p class="confident-miss" role="status">{t('quiz.confidentMiss')}</p>
           {/if}
         {/if}
 
@@ -466,22 +508,51 @@
           />
         {/if}
 
+        {#if ctx.askConfidence && !pretest}
+          <div class="confidence" role="radiogroup" aria-label={t('quiz.howSure')}>
+            <span class="confidence-label muted small">{t('quiz.howSure')}</span>
+            {#each CONFIDENCE as level (level)}
+              <button
+                type="button"
+                class="confidence-option"
+                role="radio"
+                aria-checked={confidence[current.id] === level}
+                class:selected={confidence[current.id] === level}
+                onclick={() => (confidence[current.id] = level)}>{t('quiz.confidence.' + level)}</button
+              >
+            {/each}
+          </div>
+        {/if}
+
         {#if shownHints.length > 0}
           <ol class="hint-list">
             {#each shownHints as hint, hi (hi)}<li class="hint">{hint}</li>{/each}
           </ol>
         {/if}
-        {#if solutionShown}
-          <p class="hint full-solution">{t('quiz.correctAnswer', { answer: answerText(current) })}</p>
-        {:else}
-          <button type="button" class="btn quiet-btn hint-btn" onclick={() => nextHint(current)}>
-            {hintStep < hintSteps.length ? t('quiz.getHint') : t('quiz.fullSolution')}
-          </button>
+        {#if !pretest}
+          {#if solutionShown}
+            <p class="hint full-solution">{t('quiz.correctAnswer', { answer: answerText(current) })}</p>
+          {:else}
+            <div class="help-row">
+              <button type="button" class="btn quiet-btn hint-btn" onclick={() => nextHint(current)}>
+                {hintStep < hintSteps.length ? t('quiz.getHint') : t('quiz.fullSolution')}
+              </button>
+              <button type="button" class="btn quiet-btn tutor-btn" title={t('quiz.tutorHint')} onclick={() => askTutor(current)}>
+                {tutorCopied === current.id ? t('quiz.tutorCopied') : t('quiz.tutor')}
+              </button>
+            </div>
+          {/if}
         {/if}
+
       {:else if currentRecord}
         <div class="result" role="status">
-          <p class="verdict"><span class="celebrate" aria-hidden="true">✓</span>{t('quiz.correct')}</p>
+          {#if currentRecord.correct}
+            <p class="verdict"><span class="celebrate" aria-hidden="true">✓</span>{t('quiz.correct')}</p>
+          {:else}
+            <p class="verdict guess">{t('quiz.guessWrong')}</p>
+          {/if}
           <p class="given">{t('quiz.yourAnswer')}: {givenText(current, currentRecord.given)}</p>
+          {#if !currentRecord.correct}<p class="given">{t('quiz.correctAnswer', { answer: answerText(current) })}</p>{/if}
           {#if current.explanation}<p class="explanation">{current.explanation}</p>{/if}
           <div class="row">
             <button type="button" class="btn primary" onclick={advance}>
@@ -498,7 +569,7 @@
         <span class="quiz-bar-count">{t('quiz.positionOf', { current: index + 1, total: active.length })}</span>
         <span class="quiz-dots" aria-hidden="true">
           {#each active as q, i (i)}
-            <span class="quiz-dot" class:done={ctx.getAnswer(q.id)?.correct === true} class:current={i === index}></span>
+            <span class="quiz-dot" class:done={answerOf(q.id)?.correct === true} class:current={i === index}></span>
           {/each}
         </span>
       </div>

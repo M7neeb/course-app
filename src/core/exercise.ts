@@ -7,6 +7,7 @@
 
 import { courseSkills } from './mastery.ts';
 import { indexQuestions } from './mistakes.ts';
+import { isCardDue } from './srs.ts';
 import type { Course, CourseMastery, Question, QuestionReview } from './types.ts';
 
 export interface ExerciseConfig {
@@ -148,14 +149,15 @@ export function buildExerciseSet(
   const order = shuffled(pool, random);
 
   const reviews = mastery?.reviews ?? {};
+  const cards = mastery?.cards ?? {};
   const firstTry = mastery?.skills[skillId]?.firstTry ?? {};
 
   const due: Question[] = [];
   const fresh: Question[] = [];
   const seen: Question[] = [];
   for (const question of order) {
-    if (isDue(reviews[question.id], now)) due.push(question);
-    else if (firstTry[question.id] === undefined && reviews[question.id] === undefined) fresh.push(question);
+    if (isDue(reviews[question.id], now) || isCardDue(cards[question.id], now)) due.push(question);
+    else if (firstTry[question.id] === undefined && reviews[question.id] === undefined && cards[question.id] === undefined) fresh.push(question);
     else seen.push(question);
   }
 
@@ -220,4 +222,46 @@ export function applyReview(
   if (correct) delete next[questionId];
   else next[questionId] = scheduleMiss(next[questionId], questionId, now);
   return next;
+}
+
+// ---------- course challenge ----------
+
+export interface ChallengeConfig {
+  /** Questions taken from each skill. */
+  perSkill: number;
+  /** A challenge never holds more than this. */
+  maxSize: number;
+}
+
+export const CHALLENGE: ChallengeConfig = { perSkill: 2, maxSize: 30 };
+
+/**
+ * A course challenge: a few questions from every lesson skill of the course, mixed together so
+ * units are not practised one after another. Inside each skill, due and never-asked questions
+ * come first. Skills are then interleaved round-robin and the final order is shuffled.
+ */
+export function buildChallengeSet(
+  course: Course,
+  seed: number,
+  options: { mastery?: CourseMastery; now?: Date; perSkill?: number; maxSize?: number } = {}
+): Question[] {
+  const perSkill = Math.max(1, Math.floor(options.perSkill ?? CHALLENGE.perSkill));
+  const maxSize = Math.max(1, Math.floor(options.maxSize ?? CHALLENGE.maxSize));
+  const skills = courseSkills(course).filter((skill) => skill.lessonId !== null && skill.questionIds.length > 0);
+  const random = rng(seed);
+  const buckets = skills.map((skill, index) => {
+    const set = buildExerciseSet(course, skill.id, seed + index * 7919, { mastery: options.mastery, now: options.now, size: perSkill });
+    // buildExerciseSet pads small pools with repeats; a challenge never asks the same question twice.
+    const unique: Question[] = [];
+    for (const question of set.questions) if (!unique.some((q) => q.id === question.id)) unique.push(question);
+    return unique.slice(0, perSkill);
+  });
+  const mixed: Question[] = [];
+  for (let round = 0; round < perSkill; round += 1) {
+    for (const bucket of shuffled(buckets, random)) {
+      const question = bucket[round];
+      if (question && !mixed.some((q) => q.id === question.id)) mixed.push(question);
+    }
+  }
+  return shuffled(mixed, random).slice(0, maxSize);
 }

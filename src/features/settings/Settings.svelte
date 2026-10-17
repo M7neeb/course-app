@@ -98,6 +98,17 @@
       </select>
     </label>
     <p class="muted small">{t('settings.gatingHint')}</p>
+    <label>{t('settings.dailyReviews')}
+      <select value={String(app.settings.dailyReviewLimit)} onchange={(e) => updateSettings({ dailyReviewLimit: Number(e.currentTarget.value) })}>
+        {#each [10, 20, 30, 50, 100] as n (n)}<option value={String(n)}>{n}</option>{/each}
+      </select>
+    </label>
+    <p class="muted small">{t('settings.dailyReviewsHint')}</p>
+    <label class="check">
+      <input type="checkbox" checked={app.settings.askConfidence} onchange={(e) => updateSettings({ askConfidence: e.currentTarget.checked })} />
+      {t('settings.askConfidence')}
+    </label>
+    <p class="muted small">{t('settings.askConfidenceHint')}</p>
   </fieldset>
 
   <fieldset>

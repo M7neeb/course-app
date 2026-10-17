@@ -32,6 +32,8 @@ Video: { "id": "m1-l1-b5", "type": "video", "url": "https://www.youtube.com/watc
 Flashcards: { "id": "m1-l1-b6", "type": "flashcards", "cards": [ { "front": "cue", "back": "answer" } ] }
 
 Quiz (last block of every lesson): { "id": "m1-l1-b7", "type": "quiz", "questions": [ Question ] }
+Warm-up (optional, first block of a lesson): { "id": "m1-l1-b0", "type": "quiz", "pretest": true, "questions": [ Question ] }
+  Guess-first questions before the lesson; they give feedback but do not count for mastery.
 
 ModuleTest: { "id": "m1-test", "type": "module-test", "questions": [ Question ] }
 FinalExam: { "id": "final-exam", "type": "final-exam", "questions": [ Question ] }

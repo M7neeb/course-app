@@ -5,6 +5,7 @@ import {
   ALL_KINDS,
   PRESETS,
   applyPreset,
+  checkPrompt,
   courseIdFor,
   defaultSettings,
   finalExamPrompt,
@@ -13,6 +14,7 @@ import {
   outlinePrompt,
   singlePrompt,
   toolTipKeys,
+  tutorPrompt,
   unitPrompt,
   unitStatus,
   type PromptSettings
@@ -168,4 +170,43 @@ test('every tool tip key exists in the English text file', () => {
   for (const tool of ['chatgpt', 'claude', 'gemini', 'deepseek', 'other'] as const) {
     for (const key of toolTipKeys(tool)) assert.ok(key in en, `missing i18n key ${key}`);
   }
+});
+
+test('lessons ask for warm-up guesses, further reading and misconception-first distractors', () => {
+  const prompt = unitPrompt(settings(), sample, 'm1', schema);
+  assert.ok(prompt.includes('guesses BEFORE reading'));
+  assert.ok(prompt.includes('Read more'));
+  assert.ok(prompt.includes('first solve it yourself'));
+  assert.ok(prompt.includes('find the mistake'));
+  const off = unitPrompt(settings({ extras: { ...defaultSettings().extras, warmup: false, reading: false } }), sample, 'm1', schema);
+  assert.ok(!off.includes('guesses BEFORE reading'));
+  assert.ok(!off.includes('Read more'));
+});
+
+test('old saved builder settings get the new lesson extras switched on', () => {
+  const old = normalizeSettings({ extras: { examples: false } });
+  assert.equal(old.extras.examples, false);
+  assert.equal(old.extras.warmup, true);
+  assert.equal(old.extras.reading, true);
+});
+
+test('the check prompt carries the unit in its import shape and the reply round-trips', () => {
+  const prompt = checkPrompt(sample, 'm1');
+  assert.ok(prompt.includes('Solve the question yourself first'));
+  const json = prompt.slice(prompt.lastIndexOf('```json') + 7, prompt.lastIndexOf('```'));
+  const payload = JSON.parse(json);
+  assert.equal(payload.courseId, sample.id);
+  assert.equal(payload.module.id, 'm1');
+  assert.equal(analyzeImport('```json\n' + json + '\n```').kind, 'module');
+  assert.equal(checkPrompt(sample, 'nope'), '');
+});
+
+test('the tutor prompt never contains the answer', () => {
+  const question = { prompt: 'Which layer routes packets?', options: ['Physical', 'Network', 'Session'] };
+  const prompt = tutorPrompt('Networks', question, 'de', 'Physical');
+  assert.ok(prompt.includes('Do NOT tell me the answer'));
+  assert.ok(prompt.includes('B) Network'));
+  assert.ok(prompt.includes('German'));
+  assert.ok(prompt.includes('"Physical"'));
+  assert.ok(!/correct answer is/i.test(prompt));
 });

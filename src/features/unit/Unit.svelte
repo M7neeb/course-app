@@ -9,6 +9,7 @@
   import { gateForItem, openGate, weakestSkillInModule, type Gate } from '../../core/gating.ts';
   import { MASTERY, courseSkills, itemForSkill, moduleMasteryPool, questionsToLevelUp, skillPoints, skillTitle, tierForPoints } from '../../core/mastery.ts';
   import { courseAccent } from '../../core/home.ts';
+  import { isFading } from '../../core/srs.ts';
   import type { Lesson, MasteryTier } from '../../core/types.ts';
   import MasteryIcon from '../../ui/MasteryIcon.svelte';
   import MasteryLegend from '../../ui/MasteryLegend.svelte';
@@ -50,6 +51,11 @@
 
   function tierOf(skillId: string): MasteryTier {
     return tierForPoints(skillPoints(mastery, skillId));
+  }
+
+  /** A started skill that is being forgotten: worth a review soon. */
+  function fading(skillId: string): boolean {
+    return tierOf(skillId) !== 'not-started' && isFading(mastery, skillId);
   }
 
   function kindIcon(kind: LessonKind): string {
@@ -144,8 +150,9 @@
         {#each mod.lessons as lesson (lesson.id)}
           {@const skillId = practiceSkillOf(lesson)}
           {#if skillId}
-            <button type="button" class="cf-skill-btn" onclick={() => practise(skillId)} title={`${lesson.title}: ${tierName(tierOf(skillId))}`}>
-              <MasteryIcon tier={tierOf(skillId)} label={`${lesson.title}: ${tierName(tierOf(skillId))}`} />
+            {@const label = `${lesson.title}: ${tierName(tierOf(skillId))}${fading(skillId) ? ` (${t('srs.reviewSoon')})` : ''}`}
+            <button type="button" class="cf-skill-btn" class:cf-fading={fading(skillId)} onclick={() => practise(skillId)} title={label}>
+              <MasteryIcon tier={tierOf(skillId)} {label} />
             </button>
           {/if}
         {/each}
@@ -208,7 +215,7 @@
               <MasteryIcon {tier} size={24} />
               <div class="cf-practice-text">
                 <span class="cf-practice-title">{lesson.title}</span>
-                <span class="cf-muted cf-small">{tierName(tier)}</span>
+                <span class="cf-muted cf-small">{tierName(tier)}{#if fading(skillId)}<span class="cf-review-soon">{t('srs.reviewSoon')}</span>{/if}</span>
                 {#if tier !== 'mastered'}<span class="cf-small cf-levelup">{t('unit.levelUp', { n: questionsToLevelUp(total), m: total })}</span>{/if}
               </div>
               {#if gate.locked}
@@ -238,6 +245,15 @@
           {/if}
         </section>
       {/if}
+
+      <section class="cf-card cf-test-card cf-challenge-card">
+        <MasteryIcon kind="test" size={32} />
+        <div class="cf-test-text">
+          <h2>{t('challenge.title')}</h2>
+          <p class="cf-muted">{t('challenge.cardText')}</p>
+        </div>
+        <button type="button" class="cf-btn cf-btn-secondary" onclick={() => navigate({ name: 'challenge', courseId })}>{t('challenge.cta')}</button>
+      </section>
     </main>
   </div>
 {/if}

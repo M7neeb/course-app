@@ -3,18 +3,10 @@
   // first), and the existing quiz renderer runs it and shows the results screen. Nothing about the
   // run is duplicated here - this screen only chooses the questions and wires up the context.
   import { untrack } from 'svelte';
-  import {
-    app,
-    displayTitle,
-    getCourse,
-    moduleMasteryPercentFor,
-    navigate,
-    recordActivity,
-    recordMasteryAttempt as recordMastery,
-    updateProgress
-  } from '../../core/state.svelte.ts';
+  import { app, displayTitle, getCourse, navigate } from '../../core/state.svelte.ts';
+  import { studyContext } from '../../core/studyContext.ts';
   import { buildExerciseSet, type ExerciseSet } from '../../core/exercise.ts';
-  import { courseSkills, skillIndex, skillPoints, skillTitle, tierForPoints } from '../../core/mastery.ts';
+  import { courseSkills, skillPoints, skillTitle, tierForPoints } from '../../core/mastery.ts';
   import { FINAL_EXAM_ITEM_ID } from '../../core/course-utils.ts';
   import { getBlockRenderer } from '../../blocks/registry.ts';
   import type { Block, BlockContext } from '../../core/types.ts';
@@ -54,47 +46,9 @@
   }
 
   const ctx = $derived.by<BlockContext | undefined>(() => {
-    const c = course;
     const s = skill;
-    if (!c || !s) return undefined;
-    const questionSkills = skillIndex(c);
-    return {
-      courseId,
-      lessonId: s.itemId,
-      itemKind: kindOf(s.itemId),
-      moduleId: s.moduleId,
-      explanationLevel: app.settings.explanationLevel,
-      explanationLanguage: app.settings.explanationLanguage,
-      questionLanguage: app.settings.questionLanguage,
-      autoplayVideo: app.settings.autoplayVideo,
-      getAnswer: (qid) => app.progress[courseId]?.answers[qid],
-      recordAnswer: (qid, record) => {
-        const wasCorrect = app.progress[courseId]?.answers[qid]?.correct === true;
-        void updateProgress(courseId, (p) => {
-          p.answers[qid] = record;
-        });
-        if (record.correct && !wasCorrect) void recordActivity('correct');
-      },
-      getVideoOverride: (bid) => app.progress[courseId]?.videoOverrides[bid],
-      setVideoOverride: (bid, url) => {
-        void updateProgress(courseId, (p) => {
-          p.videoOverrides[bid] = url;
-        });
-      },
-      getImageOverride: (bid) => app.progress[courseId]?.imageOverrides?.[bid],
-      setImageOverride: (bid, url) => {
-        void updateProgress(courseId, (p) => {
-          p.imageOverrides ??= {};
-          p.imageOverrides[bid] = url;
-        });
-      },
-      skillIdFor: (qid) => questionSkills.get(qid) ?? s.id,
-      skillTitleFor: (sid) => (course ? skillTitle(course, sid) : sid),
-      getSkillMastery: (sid) => app.mastery[courseId]?.skills[sid],
-      recordMasteryAttempt: (attempt) => recordMastery(courseId, attempt),
-      getModuleMasteryPercent: (mid) => moduleMasteryPercentFor(courseId, mid),
-      onSetContinue: backToLesson
-    };
+    if (!course || !s) return undefined;
+    return studyContext(courseId, { lessonId: s.itemId, itemKind: kindOf(s.itemId), moduleId: s.moduleId }, { onSetContinue: backToLesson });
   });
 
   function newSet() {

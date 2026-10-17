@@ -12,6 +12,7 @@
     applyPreset,
     courseIdFor,
     defaultSettings,
+    checkPrompt,
     finalExamPrompt,
     fixPrompt,
     normalizeSettings,
@@ -52,7 +53,7 @@
   const STEPS = ['goal', 'material', 'languages', 'structure', 'practice', 'extras'] as const;
   type Step = (typeof STEPS)[number];
   const PRESET_LIST: Preset[] = ['exam', 'programming', 'understand', 'refresher', 'deep-dive', 'custom'];
-  const EXTRA_KEYS: (keyof Extras)[] = ['examples', 'analogies', 'mistakes', 'examTips', 'summaries', 'flashcards', 'images', 'videos', 'code'];
+  const EXTRA_KEYS: (keyof Extras)[] = ['examples', 'analogies', 'mistakes', 'examTips', 'summaries', 'flashcards', 'images', 'videos', 'code', 'warmup', 'reading'];
 
   let mode = $state<Mode>('new');
   let step = $state<Step>('goal');
@@ -401,6 +402,7 @@
         </label>
       </div>
       <p class="cf-muted cf-small">{savedForCourse ? t('create.savedSettings') : t('create.currentSettings')} {t('create.continue.help')}</p>
+      <p class="cf-muted cf-small">{t('create.checkHelp')}</p>
 
       {#if course}
         <ul class="cf-unit-prompts">
@@ -411,15 +413,27 @@
                 <span class="cf-practice-title">{t('unit.heading', { n: index + 1, title: unit.title })}</span>
                 <span class="cf-muted cf-small">{unit.written ? t('create.unitWritten') : t('create.unitEmpty')}</span>
               </div>
-              <button
-                type="button"
-                class="cf-btn cf-btn-small"
-                class:cf-btn-primary={!unit.written}
-                class:cf-btn-secondary={unit.written}
-                onclick={() => course && copy('unit-' + unit.moduleId, unitPrompt(unitSettings, course, unit.moduleId, schema))}
-              >
-                {copiedKey === 'unit-' + unit.moduleId ? t('create.copied') : t('create.copyUnit')}
-              </button>
+              <div class="cf-unit-prompt-actions">
+                {#if unit.written}
+                  <button
+                    type="button"
+                    class="cf-btn cf-btn-small cf-btn-secondary"
+                    title={t('create.checkHint')}
+                    onclick={() => course && copy('check-' + unit.moduleId, checkPrompt(course, unit.moduleId))}
+                  >
+                    {copiedKey === 'check-' + unit.moduleId ? t('create.copied') : t('create.check')}
+                  </button>
+                {/if}
+                <button
+                  type="button"
+                  class="cf-btn cf-btn-small"
+                  class:cf-btn-primary={!unit.written}
+                  class:cf-btn-secondary={unit.written}
+                  onclick={() => course && copy('unit-' + unit.moduleId, unitPrompt(unitSettings, course, unit.moduleId, schema))}
+                >
+                  {copiedKey === 'unit-' + unit.moduleId ? t('create.copied') : t('create.copyUnit')}
+                </button>
+              </div>
             </li>
           {/each}
           {#if unitSettings.finalExam}
@@ -429,9 +443,21 @@
                 <span class="cf-practice-title">{t('create.examRow')}</span>
                 <span class="cf-muted cf-small">{course.finalExam ? t('create.examDone') : t('create.examReady')}</span>
               </div>
-              <button type="button" class="cf-btn cf-btn-secondary cf-btn-small" onclick={() => course && copy('exam', finalExamPrompt(unitSettings, course, schema))}>
-                {copiedKey === 'exam' ? t('create.copied') : t('create.copyUnit')}
-              </button>
+              <div class="cf-unit-prompt-actions">
+                {#if course.finalExam}
+                  <button
+                    type="button"
+                    class="cf-btn cf-btn-small cf-btn-secondary"
+                    title={t('create.checkHint')}
+                    onclick={() => course && copy('check-exam', checkPrompt(course, 'final-exam'))}
+                  >
+                    {copiedKey === 'check-exam' ? t('create.copied') : t('create.check')}
+                  </button>
+                {/if}
+                <button type="button" class="cf-btn cf-btn-secondary cf-btn-small" onclick={() => course && copy('exam', finalExamPrompt(unitSettings, course, schema))}>
+                  {copiedKey === 'exam' ? t('create.copied') : t('create.copyUnit')}
+                </button>
+              </div>
             </li>
           {/if}
         </ul>

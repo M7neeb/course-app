@@ -4,17 +4,16 @@
     app,
     displayTitle,
     getCourse,
-    moduleMasteryPercentFor,
     navigate,
     recordActivity,
-    recordMasteryAttempt as recordMastery,
     updateProgress,
     updateSettings
   } from '../../core/state.svelte.ts';
   import { blockLanguages, type Lang } from '../../core/localize.ts';
   import { flattenCourse } from '../../core/course-utils.ts';
   import { gateForItem, openGate } from '../../core/gating.ts';
-  import { MASTERY, courseSkills, itemForSkill, skillIndex, skillTitle } from '../../core/mastery.ts';
+  import { MASTERY, courseSkills, itemForSkill, skillTitle } from '../../core/mastery.ts';
+  import { studyContext } from '../../core/studyContext.ts';
   import type { BlockContext, MasteryTier } from '../../core/types.ts';
   import { getBlockRenderer } from '../../blocks/registry.ts';
   import UnknownBlock from '../../blocks/unknown/UnknownBlock.svelte';
@@ -106,50 +105,20 @@
 
   const ctx = $derived<BlockContext | undefined>(
     current
-      ? {
+      ? studyContext(
           courseId,
-          lessonId: current.id,
-          itemKind: current.kind,
-          moduleId: current.moduleId,
-          explanationLevel: app.settings.explanationLevel,
-          explanationLanguage: app.settings.explanationLanguage,
-          questionLanguage: app.settings.questionLanguage,
-          autoplayVideo: app.settings.autoplayVideo,
-          getAnswer: (qid) => app.progress[courseId]?.answers[qid],
-          recordAnswer: (qid, record) => {
-            const wasCorrect = app.progress[courseId]?.answers[qid]?.correct === true;
-            void updateProgress(courseId, (p) => {
-              p.answers[qid] = record;
-            });
-            if (record.correct && !wasCorrect) void recordActivity('correct');
-          },
-          getVideoOverride: (bid) => app.progress[courseId]?.videoOverrides[bid],
-          setVideoOverride: (bid, url) => {
-            void updateProgress(courseId, (p) => {
-              p.videoOverrides[bid] = url;
-            });
-          },
-          getImageOverride: (bid) => app.progress[courseId]?.imageOverrides?.[bid],
-          setImageOverride: (bid, url) => {
-            void updateProgress(courseId, (p) => {
-              p.imageOverrides ??= {};
-              p.imageOverrides[bid] = url;
-            });
-          },
-          skillIdFor: (qid) => questionSkills.get(qid) ?? current.id,
-          skillTitleFor: (sid) => (course ? skillTitle(course, sid) : sid),
-          getSkillMastery: (sid) => app.mastery[courseId]?.skills[sid],
-          recordMasteryAttempt: (attempt) => recordMastery(courseId, attempt),
-          getModuleMasteryPercent: (mid) => moduleMasteryPercentFor(courseId, mid),
-          onSetContinue: () => {
-            if (next) go(next.id);
-            else window.scrollTo({ top: 0 });
+          { lessonId: current.id, itemKind: current.kind, moduleId: current.moduleId },
+          {
+            media: true,
+            onSetContinue: () => {
+              if (next) go(next.id);
+              else window.scrollTo({ top: 0 });
+            }
           }
-        }
+        )
       : undefined
   );
 
-  const questionSkills = $derived(course ? skillIndex(course) : new Map<string, string>());
 
   // Gating: what has to be reached before this lesson, test or exam may be opened. In 'free' mode
   // nothing is locked, but the requirement still comes back as a recommendation.

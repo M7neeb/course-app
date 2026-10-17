@@ -659,3 +659,16 @@ fieldset, .notice, .banner { border-radius: 4px; box-shadow: none; }
 .video-frame { border-radius: 4px; box-shadow: none; }
 .video-offline { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; padding: 16px; color: #fff; text-align: center; }
 .cf-levelup { color: var(--accent); font-weight: 700; }
+
+/* Spaced review: "Review soon" on fading skills, the Today card, the course challenge. */
+.cf-review-soon { display: inline-block; margin-left: 0.5rem; padding: 0 0.45rem; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 0.78rem; font-weight: 700; }
+.cf-skill-btn.cf-fading { position: relative; }
+.cf-skill-btn.cf-fading::after { content: ''; position: absolute; top: -2px; right: -2px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); border: 2px solid var(--surface); }
+.cf-today-review, .cf-today { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
+.cf-today-review h2, .cf-today h2 { margin: 0 0 0.25rem; font-size: 1.15rem; }
+.cf-today-review p, .cf-today p { margin: 0.15rem 0; }
+.cf-today-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.cf-challenge-card { margin-top: 1rem; }
+.cf-challenge-points { margin: 0.5rem 0 1rem; padding-left: 1.2rem; }
+.cf-challenge-points li { margin-bottom: 0.3rem; }
+.cf-unit-prompt-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; justify-content: flex-end; }

@@ -701,3 +701,14 @@ body { background: var(--bg); }
 .quiz-dot.current { background: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent); }
 .quiz-bar-right { display: flex; align-items: center; gap: 0.6rem; flex: none; }
 
+
+/* Quiz: warm-up label, help row, "How sure are you?" and the confident-mistake note. */
+.warmup-label { margin: 0 0 0.5rem; }
+.help-row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-top: 0.3rem; }
+.help-row .hint-btn { margin-top: 0; }
+.confidence { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin: 0.2rem 0 0.8rem; }
+@media (max-width: 600px) { .confidence-label { flex-basis: 100%; } }
+.confidence-option { min-height: 40px; padding: 0.35rem 0.95rem; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink); font: inherit; font-size: 0.92rem; cursor: pointer; }
+.confidence-option.selected { border-color: var(--accent); background: var(--accent-soft); font-weight: 700; }
+.confident-miss { margin: 0 0 0.7rem; padding: 0.5rem 0.8rem; border-radius: 8px; background: var(--bad-soft); border-left: 3px solid var(--bad); font-weight: 600; }
+.verdict.guess { font-weight: 700; }

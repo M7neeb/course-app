@@ -8,6 +8,7 @@ import { flattenCourse } from './course-utils.ts';
 import { newProgress, pruneProgress } from './progress.ts';
 import { dayKey, emptyDay, withActivity, type ActivityDay } from './activity.ts';
 import { applyReview } from './exercise.ts';
+import { applyCard } from './srs.ts';
 import { makeTrashed, purgeExpired } from './trash.ts';
 import {
   MASTERY,
@@ -267,8 +268,8 @@ export function recordMasteryAttempt(courseId: string, attempt: MasteryAttempt, 
       questionId: attempt.questionId,
       correct: attempt.correct,
       usedHint: attempt.usedHint,
-      // A wrong answer only costs a tier inside a module test or the final exam.
-      inTest: item !== undefined && item.kind !== 'lesson',
+      // A wrong answer only costs a tier inside a module test, the final exam or a course challenge.
+      inTest: attempt.inTest ?? (item !== undefined && item.kind !== 'lesson'),
       totalQuestions: skill?.questionIds.length ?? 1
     },
     now
@@ -288,6 +289,14 @@ export function recordMasteryAttempt(courseId: string, attempt: MasteryAttempt, 
     skills: { ...current.skills, [skillId]: nextSkill },
     // Spaced re-review: a wrong answer schedules the question, a correct one clears it.
     reviews: applyReview(current.reviews, attempt.questionId, attempt.correct, now),
+    // Spaced repetition for every answer: right answers come back later, wrong ones sooner.
+    cards: applyCard(
+      current.cards,
+      attempt.questionId,
+      skillId,
+      { correct: attempt.correct, usedHint: attempt.usedHint, confidence: attempt.confidence },
+      now
+    ),
     mistakes: [...current.mistakes, entry].slice(-MASTERY.mistakeLogLimit),
     updatedAt: now.toISOString()
   };

@@ -20,6 +20,7 @@
   import CourseOutline from './features/player/CourseOutline.svelte';
   import Exercise from './features/exercise/Exercise.svelte';
   import Unit from './features/unit/Unit.svelte';
+  import Challenge from './features/challenge/Challenge.svelte';
   import NavIcon from './ui/NavIcon.svelte';
   import SearchBox from './ui/SearchBox.svelte';
   import ExploreMenu from './ui/ExploreMenu.svelte';
@@ -27,7 +28,7 @@
   import { t } from './i18n/i18n.ts';
 
   const route = $derived(app.route);
-  const courseRoute = $derived(route.name === 'player' || route.name === 'unit' || route.name === 'exercise');
+  const courseRoute = $derived(route.name === 'player' || route.name === 'unit' || route.name === 'exercise' || route.name === 'challenge');
   let drawerOpen = $state(false);
   let profileMenuOpen = $state(false);
 
@@ -152,6 +153,8 @@
     </div>
   {:else if route.name === 'exercise'}
     <main class="cf-page cf-page-narrow"><Exercise courseId={route.courseId} skillId={route.skillId} /></main>
+  {:else if route.name === 'challenge'}
+    <main class="cf-page cf-page-narrow"><Challenge courseId={route.courseId} /></main>
   {:else}
     <div class="cf-page cf-with-nav">
       <LearnerNav />

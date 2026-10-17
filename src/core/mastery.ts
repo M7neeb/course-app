@@ -4,6 +4,7 @@
 // saved mastery records, which makes the whole system testable.
 
 import { FINAL_EXAM_ITEM_ID, flattenCourse, testItemId, type FlatItem } from './course-utils.ts';
+import { SRS, skillRetention } from './srs.ts';
 import type { Block, Course, CourseMastery, MasteryTier, Question, SkillMastery } from './types.ts';
 
 export interface MasteryConfig {
@@ -81,8 +82,21 @@ export function emptyCourseMastery(courseId: string, now: Date = new Date()): Co
   return { courseId, skills: {}, mistakes: [], updatedAt: now.toISOString() };
 }
 
-export function skillPoints(mastery: CourseMastery | undefined, skillId: string): number {
+/** The points a skill has earned, as stored, without fading. */
+export function storedPoints(mastery: CourseMastery | undefined, skillId: string): number {
   return mastery?.skills[skillId]?.points ?? MASTERY.points.notStarted;
+}
+
+/**
+ * The points a skill counts for right now. Mastery fades: a Mastered skill whose questions are
+ * being forgotten shows as Proficient until it is reviewed, and a right review brings it back.
+ * Fading never goes below Proficient, so it can never close a lesson, test or unit that was open.
+ */
+export function skillPoints(mastery: CourseMastery | undefined, skillId: string, now: Date = new Date()): number {
+  const points = storedPoints(mastery, skillId);
+  if (points < MASTERY.points.mastered) return points;
+  const retention = skillRetention(mastery, skillId, now);
+  return retention !== undefined && retention < SRS.decayBelow ? MASTERY.points.proficient : points;
 }
 
 /** Share of a skill's questions solved on the first try. */
@@ -181,8 +195,13 @@ export interface Skill {
   questionIds: string[];
 }
 
+/** True for a guess-first warm-up quiz: it gives feedback but never counts for mastery or review. */
+export function isPretest(block: Block | undefined): boolean {
+  return block?.pretest === true;
+}
+
 function questionsOf(block: Block | undefined): Question[] {
-  if (!block) return [];
+  if (!block || isPretest(block)) return [];
   const raw = (block as { questions?: unknown }).questions;
   if (!Array.isArray(raw)) return [];
   return raw.filter((q): q is Question => typeof q === 'object' && q !== null && typeof (q as Question).id === 'string' && (q as Question).id !== '');

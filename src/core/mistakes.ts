@@ -19,6 +19,8 @@ export function indexQuestions(course: Course): Map<string, QuestionLocation> {
   const map = new Map<string, QuestionLocation>();
   for (const item of flattenCourse(course)) {
     for (const block of item.blocks) {
+      // Warm-up guesses are not real attempts, so they are never listed or reviewed.
+      if ((block as Block).pretest === true) continue;
       const questions = (block as Block).questions;
       if (!Array.isArray(questions)) continue;
       for (const raw of questions) {

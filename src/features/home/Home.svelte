@@ -16,6 +16,8 @@
     streakWeeks,
     type ModuleStatus
   } from '../../core/home.ts';
+  import { indexQuestions } from '../../core/mistakes.ts';
+  import { dueCards, reviewedToday, todayQueue } from '../../core/srs.ts';
   import type { Course, Module } from '../../core/types.ts';
   import LearnerNav from '../../ui/LearnerNav.svelte';
   import MasteryIcon from '../../ui/MasteryIcon.svelte';
@@ -57,6 +59,24 @@
   );
   const masteredCount = $derived(badges.find((badge) => badge.id === 'mastered')?.count ?? 0);
   const familiarCount = $derived(badges.find((badge) => badge.id === 'familiar')?.count ?? 0);
+
+  // Today: the reviews that are due (capped per day) and the course to carry on with.
+  const today_ = $derived.by(() => {
+    const now = new Date();
+    const indexes = new Map(activeCourses.map((course) => [course.id, indexQuestions(course)]));
+    const due = dueCards(activeCourses, app.mastery, (courseId, qid) => indexes.get(courseId)?.has(qid) === true, now);
+    return todayQueue(due, reviewedToday(app.mastery, now), app.settings.dailyReviewLimit);
+  });
+  const continueCourse = $derived(courses[0]);
+
+  function continueOn() {
+    const course = continueCourse;
+    if (!course) return;
+    const moduleId = entryModuleId(course, app.progress[course.id]);
+    if (moduleId) navigate({ name: 'unit', courseId: course.id, moduleId });
+    else navigate({ name: 'player', courseId: course.id });
+    window.scrollTo({ top: 0 });
+  }
 
   let expanded = $state<Record<string, boolean>>({});
 
@@ -130,6 +150,28 @@
         <button type="button" class="cf-btn cf-btn-primary" onclick={() => navigate({ name: 'library' })}>{t('home.editCourses')}</button>
       {/if}
     </div>
+
+    {#if courses.length > 0}
+      <section class="cf-card cf-today" aria-labelledby="home-today">
+        <div>
+          <h2 id="home-today">{t('home.today')}</h2>
+          {#if today_.cards.length > 0}
+            <p>{today_.cards.length === 1 ? t('review.dueOne') : t('review.dueMany', { n: today_.cards.length })}</p>
+          {:else}
+            <p>{t('home.todayNoReviews')}</p>
+          {/if}
+          {#if continueCourse}<p class="cf-muted cf-small">{t('home.todayContinue', { course: displayTitle(continueCourse) })}</p>{/if}
+        </div>
+        <div class="cf-today-actions">
+          {#if today_.cards.length > 0}
+            <button type="button" class="cf-btn cf-btn-primary" onclick={() => navigate({ name: 'review' })}>{t('home.todayReview')}</button>
+          {/if}
+          {#if continueCourse}
+            <button type="button" class="cf-btn" class:cf-btn-primary={today_.cards.length === 0} class:cf-btn-secondary={today_.cards.length > 0} onclick={continueOn}>{t('home.todayContinueCta')}</button>
+          {/if}
+        </div>
+      </section>
+    {/if}
 
     {#if courses.length === 0}
       <div class="cf-empty">

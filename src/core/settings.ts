@@ -20,7 +20,9 @@ export function defaultSettings(): Settings {
     profileName: '',
     profileColor: '#356a8a',
     username: '',
-    bio: ''
+    bio: '',
+    dailyReviewLimit: 20,
+    askConfidence: true
   };
 }
 
@@ -51,5 +53,9 @@ export function mergeSettings(saved: unknown): Settings {
   if (typeof s.profileColor === 'string' && /^#[\da-f]{6}$/i.test(s.profileColor)) out.profileColor = s.profileColor;
   if (typeof s.username === 'string') out.username = s.username.slice(0, 32);
   if (typeof s.bio === 'string') out.bio = s.bio.slice(0, 160);
+  if (typeof s.dailyReviewLimit === 'number' && Number.isFinite(s.dailyReviewLimit)) {
+    out.dailyReviewLimit = Math.min(100, Math.max(5, Math.round(s.dailyReviewLimit)));
+  }
+  if (typeof s.askConfidence === 'boolean') out.askConfidence = s.askConfidence;
   return out;
 }

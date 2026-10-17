@@ -181,6 +181,38 @@ export interface QuestionReview {
   misses: number;
 }
 
+/** How sure the learner said they were before checking an answer. */
+export type Confidence = 'sure' | 'unsure' | 'guess';
+
+/**
+ * One question's spaced-repetition card (FSRS). Every answered question gets one; right answers
+ * push it further out, wrong answers bring it back soon.
+ */
+export interface ReviewCard {
+  questionId: string;
+  /** The skill the question counts toward, so a skill's memory can be estimated from its cards. */
+  skillId: string;
+  /** When the question is due again (ISO). */
+  due: string;
+  /** Days until memory drops to 90%: the bigger, the better it is remembered. */
+  stability: number;
+  /** 1-10, how hard this question is for this learner. */
+  difficulty: number;
+  /** Days between the last review and the due date. */
+  scheduledDays: number;
+  /** Times answered. */
+  reps: number;
+  /** Times forgotten after having been learned. */
+  lapses: number;
+  /** Scheduler state: 0 new, 1 learning, 2 review, 3 relearning. */
+  state: number;
+  lastReview?: string;
+  /** Grade of the day's first answer (1 again, 2 hard, 3 good, 4 easy). */
+  lastRating?: number;
+  /** True while the latest answer was wrong although the learner was sure. */
+  confidentMiss?: boolean;
+}
+
 /** One graded attempt in the persistent mistake log. Entries with `correct: false` are mistakes. */
 export interface MistakeLogEntry {
   questionId: string;
@@ -199,6 +231,8 @@ export interface CourseMastery {
   mistakes: MistakeLogEntry[];
   /** Spaced re-review schedule, keyed by question id. Optional: records saved before v3 have none. */
   reviews?: Record<string, QuestionReview>;
+  /** Spaced-repetition cards for every answered question, keyed by question id. Optional: older records have none. */
+  cards?: Record<string, ReviewCard>;
   updatedAt: string;
 }
 
@@ -210,6 +244,10 @@ export interface MasteryAttempt {
   usedHint: boolean;
   /** What the learner answered, kept in the mistake log. */
   given: unknown;
+  /** How sure the learner said they were, when they said. */
+  confidence?: Confidence;
+  /** Counts as a test answer (can raise to Mastered or cost a tier) even outside a module test. */
+  inTest?: boolean;
 }
 
 export interface CourseProgress {
@@ -265,6 +303,10 @@ export interface Settings {
   username?: string;
   /** Optional one-line bio shown under the display name on Home. */
   bio?: string;
+  /** Spaced reviews offered per day. */
+  dailyReviewLimit: number;
+  /** Show the "How sure are you?" buttons before checking an answer. */
+  askConfidence: boolean;
 }
 
 /** A deleted course kept in the trash until it is restored or purged. */
@@ -309,6 +351,10 @@ export interface BlockContext {
   explanationLanguage: 'en' | 'de';
   questionLanguage: 'en' | 'de';
   autoplayVideo: boolean;
+  /** Show the "How sure are you?" buttons before checking. */
+  askConfidence?: boolean;
+  /** The course's display title, used in copy-to-AI prompts. */
+  courseTitle?: string;
   getAnswer(questionId: string): AnswerRecord | undefined;
   recordAnswer(questionId: string, record: AnswerRecord): void;
   getVideoOverride(blockId: string): string | undefined;
@@ -321,6 +367,8 @@ export interface BlockContext {
   /** Display name of a skill, for the results screen. */
   skillTitleFor(skillId: string): string;
   getSkillMastery(skillId: string): SkillMastery | undefined;
+  /** A skill's points right now, after fading; falls back to the stored points when absent. */
+  getSkillPoints?(skillId: string): number;
   /** Records one graded attempt against its skill and the persistent mistake log. */
   recordMasteryAttempt(attempt: MasteryAttempt): void;
   /** 0-100 mastery points over a whole module. */
@@ -343,4 +391,5 @@ export type Route =
   | { name: 'stats' }
   | { name: 'review' }
   | { name: 'trash' }
-  | { name: 'exercise'; courseId: string; skillId: string };
+  | { name: 'exercise'; courseId: string; skillId: string }
+  | { name: 'challenge'; courseId: string };

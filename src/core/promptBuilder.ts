@@ -33,6 +33,10 @@ export interface Extras {
   images: boolean;
   videos: boolean;
   code: boolean;
+  /** Two guess-first warm-up questions at the start of every lesson. */
+  warmup: boolean;
+  /** A "Read more" note with 1-2 real references at the end of every lesson. */
+  reading: boolean;
 }
 
 export interface PromptSettings {
@@ -146,7 +150,9 @@ export function defaultSettings(): PromptSettings {
       flashcards: true,
       images: true,
       videos: false,
-      code: false
+      code: false,
+      warmup: true,
+      reading: true
     },
     tone: '',
     extraInstructions: '',
@@ -429,13 +435,16 @@ function lessonRecipe(s: PromptSettings): string {
     ? 'one "text" block with the explanation in three depths: "normal" (the standard explanation), "simple" (for someone who is lost: everyday words and a comparison) and "detailed" (precise terms, edge cases, why it works)'
     : 'one "text" block with the explanation ("normal" only)';
   const steps = [
-    `Start with ${levels}. Length: ${DEPTH_TEXT[s.depth]}. Begin with one sentence on why this matters, then explain step by step, and use small tables or numbered lists where they make things clearer.`,
+    e.warmup
+      ? 'Begin with a "quiz" block with "pretest": true holding 2 quick questions about what the lesson is going to teach. The learner guesses BEFORE reading (guessing first, even wrongly, makes the lesson stick better); these do not count for mastery. Ask about the core idea, make them answerable by a smart guess, and give each a short explanation.'
+      : '',
+    `${e.warmup ? 'Then' : 'Start with'} ${levels}. Length: ${DEPTH_TEXT[s.depth]}. Begin with one sentence on why this matters, then explain step by step, and use small tables or numbered lists where they make things clearer.`,
     e.analogies ? 'Use a concrete everyday comparison or example for every abstract idea.' : '',
     e.code
       ? 'Show code in fenced Markdown code blocks with the language name (```python, ```sql, ...). Keep examples short, runnable and commented. Show the output where it helps.'
       : '',
     e.examples
-      ? 'Add one "example" block: a fully worked example with numbered steps and the reasoning for each step, not just the result. Where it fits, end it with a similar "Now you" task and its answer.'
+      ? 'Add one "example" block: a fully worked example with numbered steps and the reasoning for each step, not just the result. Then hand the work over step by step: the first quiz questions of the lesson give a similar problem with the first steps already done, so the learner only finishes it, and later questions ask for the whole solution.'
       : '',
     '"callout" block with style "keypoint": the 1-3 things to remember from this lesson.',
     e.mistakes ? '"callout" block with style "warning": the most common mistake or misconception, why people make it, and how to avoid it.' : '',
@@ -446,6 +455,9 @@ function lessonRecipe(s: PromptSettings): string {
       : 'No "video" blocks.',
     e.flashcards ? '"flashcards" block with 3-6 cards for the key terms and facts (not copies of quiz questions).' : '',
     e.summaries ? '"callout" block with style "note": a 2-4 line summary of the lesson.' : '',
+    e.reading
+      ? '"callout" block with style "note" and title "Read more": 1-2 real references for this lesson (a textbook chapter, official documentation or a Wikipedia article) so the learner can double-check. Only list sources you are certain exist; give the exact title and, for websites, the full link.'
+      : '',
     `Finish with one "quiz" block of ${s.questionsPerLesson} questions.`
   ];
   return section('Every lesson, in this order', list(steps));
@@ -457,17 +469,18 @@ function questionRules(s: PromptSettings): string {
     `Allowed question kinds: ${kinds.map((k) => KIND_TEXT[k]).join('; ')}. Pick the kind that fits the content, vary them, and use each allowed kind at least once per unit.`,
     `Difficulty: ${DIFFICULTY_TEXT[s.difficulty]}.`,
     'Every lesson quiz mixes levels: about 40% recall and understanding, 40% applying it to a new case, 20% analysing or comparing. Every question checks the lesson goal, not trivia.',
-    'Wrong options are believable: build them from real misconceptions and typical calculation slips. Keep options similar in length and style. Exactly one correct option (multiple-choice). Put the correct option in a different position each time.',
+    'Write each question in this order in your head: first solve it yourself and write the correct answer, then list 2-3 mistakes a real learner would make on it, then turn exactly those mistakes into the wrong options. Wrong options are believable: build them from real misconceptions and typical calculation slips. Keep options similar in length and style. Exactly one correct option (multiple-choice). Put the correct option in a different position each time.',
+    'Do not only ask for facts. In every unit also use: "find the mistake" (show a short worked solution with one wrong step and ask which step is wrong), "why" questions (which reason explains this?), putting solution steps in order (ordering), and real-life scenarios where the learner applies the idea.',
     'Never use "all of the above", "none of the above", trick wording or double negatives. Ask positively.',
     'Every question has an "explanation" that teaches (why the answer is right, and why the tempting wrong answer is wrong) and a "hint" that nudges without giving the answer away.',
     s.progressiveHints
       ? 'Also give "hints": 2-3 hints that get more specific step by step (the last one almost solves it, but still is not the answer).'
       : '',
-    'Option-based kinds (multiple-choice, multi-select) have "rationales": one short line per option saying why it is right or wrong.',
+    'Option-based kinds (multiple-choice, multi-select) ALWAYS have "rationales": one short line for EVERY option saying why it is right or wrong. The app shows the rationale of the option the learner picked, so it must explain that specific mistake.',
     'GRADING: short-answer and fill-blank answers are checked by exact match after lowercasing, trimming and removing final punctuation. So ask for ONE word, number or very short term, and list every accepted spelling, synonym, abbreviation and plural in "answer" (e.g. ["DNS", "Domain Name System"]). Never expect a full sentence.',
     'numeric: the unit goes in the prompt ("in bits"), the "answer" is just the number. Add "tolerance" when rounding is fair.',
     s.variants
-      ? 'For the most important ideas, write 2 variants of the same question (same idea, different numbers or wording) and give both the same "variantGroup" (e.g. "m1-l2-subnet-mask"). The app uses variants when it re-asks a missed question.'
+      ? 'For every core idea of a lesson, write 2-3 variants of the same question (same idea, different numbers, wording or question kind) and give them the same "variantGroup" (e.g. "m1-l2-subnet-mask"). The app asks a different variant when it brings a question back for review, so the learner remembers the idea and not the wording.'
       : '',
     s.examOperators && s.purpose === 'exam'
       ? 'Use the task verbs of German exams ("Operatoren") in the question wording where they fit: nennen, beschreiben, erklären, erläutern, berechnen, vergleichen, beurteilen. Spread the three requirement levels (Anforderungsbereiche I reproduce, II apply, III evaluate) across every unit.'
@@ -677,6 +690,90 @@ export function fixPrompt(errors: string, brokenJson: string): string {
     errors.trim(),
     'Fix ONLY these problems. Do not change, add or remove anything else. Reply with the complete corrected JSON in ONE ```json code block and nothing else.',
     brokenJson.trim()
+  ]);
+}
+
+/**
+ * A second, separate check of a written unit (or the final exam). Asking a fresh chat to review
+ * the content catches far more wrong answers than the writer's own self-check. The reply is the
+ * corrected unit in the same import shape, so the learner just imports it again.
+ */
+export function checkPrompt(course: Course, target: string): string {
+  const isExam = target === 'final-exam';
+  const unit = isExam ? undefined : course.modules.find((m) => m.id === target);
+  if (!isExam && !unit) return '';
+  if (isExam && !course.finalExam) return '';
+  const payload = isExam ? { courseId: course.id, finalExam: course.finalExam } : { courseId: course.id, module: unit };
+  const what = isExam ? `the final exam of the course "${course.title}"` : `unit "${unit?.title ?? target}" of the course "${course.title}"`;
+  const languages = (course.languages && course.languages.length > 0 ? course.languages : [course.language ?? 'en']).map(languageName);
+  return join([
+    `You are a careful subject expert and exam reviewer. Check ${what} below before a student studies it. You did not write it, so do not trust it: check everything yourself.`,
+    section(
+      'Check every question',
+      list([
+        'Solve the question yourself first, then compare with the given "answer". Is the marked answer really correct? Is there exactly one correct option where there should be one?',
+        'Could a careful student argue that another option is also correct? Then reword the question or the option.',
+        'Do the "explanation", "hint", "hints" and "rationales" match the correct answer and teach something? Does every option of a multiple-choice or multi-select question have a rationale?',
+        'short-answer / fill-blank: is the answer one short term, and are all reasonable spellings and synonyms listed?',
+        'Can the question be answered from what the lessons teach?'
+      ])
+    ),
+    section(
+      'Check the lessons',
+      list([
+        'Is every fact, definition, formula and number correct? Fix anything that is wrong or misleading.',
+        'Is any YouTube link or reference likely to be invented? Remove links and references you are not certain exist.'
+      ])
+    ),
+    section(
+      'Rules for your fixes',
+      list([
+        'Keep every id, the structure and everything that is already correct exactly as it is.',
+        'Only change what is wrong. Do not shorten, rewrite or "improve" correct content.',
+        `Keep the language of the content (${languages.join(' and ')}), including any "i18n" translations.`
+      ])
+    ),
+    section(
+      'Reply',
+      list([
+        'First a short list of what you changed and why (at most 10 lines). If nothing was wrong, say so.',
+        'Then the complete corrected JSON in ONE ```json code block, in exactly the same shape as below, so it can be imported again.'
+      ])
+    ),
+    '```json\n' + JSON.stringify(payload, null, 2) + '\n```'
+  ]);
+}
+
+/**
+ * The "Stuck?" tutor prompt for one question. It gives the chat AI the question but not the
+ * answer, and tells it to coach instead of solving: an AI that just hands over answers makes
+ * learners do worse once it is gone, a tutor that makes them think does not.
+ */
+export function tutorPrompt(
+  courseTitle: string,
+  question: { prompt: string; options?: string[] },
+  replyLanguage: string = 'en',
+  given?: string
+): string {
+  const options =
+    Array.isArray(question.options) && question.options.length > 0
+      ? '\n\nThe options are:\n' + question.options.map((o, i) => `${String.fromCharCode(65 + i)}) ${o}`).join('\n')
+      : '';
+  return join([
+    `I am studying "${courseTitle}" and I am stuck on this practice question:`,
+    `"${question.prompt}"${options}`,
+    given ? `My last answer was: "${given}". It was marked wrong.` : '',
+    section(
+      'How to help me',
+      list([
+        'Be my tutor, not an answer key. Do NOT tell me the answer or which option is correct, even if I ask.',
+        'First ask me one short question to find out what I already understand.',
+        'Then give me one small hint or one guiding question at a time and wait for my reply.',
+        'If I make a mistake, point to the step that went wrong and let me fix it myself.',
+        'When I have solved it, ask me to explain in one or two sentences WHY it is right.',
+        `Keep every message short. Reply in ${languageName(replyLanguage)}.`
+      ])
+    )
   ]);
 }
 

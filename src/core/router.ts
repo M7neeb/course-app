@@ -22,6 +22,8 @@ export function formatHash(route: Route): string {
       return '#/trash';
     case 'exercise':
       return `#/exercise/${encodeURIComponent(route.courseId)}/${encodeURIComponent(route.skillId)}`;
+    case 'challenge':
+      return `#/challenge/${encodeURIComponent(route.courseId)}`;
     case 'unit':
       return `#/unit/${encodeURIComponent(route.courseId)}/${encodeURIComponent(route.moduleId)}`;
     case 'player': {
@@ -47,6 +49,7 @@ export function parseHash(hash: string): Route {
   if (first === 'exercise' && second && third) {
     return { name: 'exercise', courseId: decodeURIComponent(second), skillId: decodeURIComponent(third) };
   }
+  if (first === 'challenge' && second) return { name: 'challenge', courseId: decodeURIComponent(second) };
   if (first === 'unit' && second && third) {
     return { name: 'unit', courseId: decodeURIComponent(second), moduleId: decodeURIComponent(third) };
   }
