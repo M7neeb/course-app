@@ -4,7 +4,7 @@
   // (plus the star for the unit test), an "About this unit" card and one card per lesson with its
   // Learn and Practice rows. Gating is decided by the shared `gateForItem`, so 'free' mode never
   // locks anything while still showing the recommendation.
-  import { app, displayTitle, getCourse, moduleMasteryPercentFor, navigate, saveReflection } from '../../core/state.svelte.ts';
+  import { app, courseSettings, displayTitle, getCourse, moduleMasteryPercentFor, navigate, saveReflection } from '../../core/state.svelte.ts';
   import { flattenCourse, lessonKind, testItemId, type FlatItem, type LessonKind } from '../../core/course-utils.ts';
   import { gateForItem, openGate, weakestSkillInModule, type Gate } from '../../core/gating.ts';
   import { MASTERY, courseSkills, itemForSkill, moduleMasteryPool, questionsToLevelUp, skillPoints, skillTitle, tierForPoints } from '../../core/mastery.ts';
@@ -18,9 +18,16 @@
   import NavIcon from '../../ui/NavIcon.svelte';
   import { t } from '../../i18n/i18n.ts';
 
+  import { lessonQuestionCount, readingMinutes, shows } from '../../core/layout.ts';
+  import { skillRetention } from '../../core/srs.ts';
+
   let { courseId, moduleId }: { courseId: string; moduleId: string } = $props();
 
   const course = $derived(getCourse(courseId));
+  const cs = $derived(courseSettings(courseId));
+  const layout = $derived(app.settings.layout);
+  const extra = $derived(shows(layout, 'extraStats'));
+  const simple = $derived(layout === 'simple');
   const mod = $derived(course?.modules.find((m) => m.id === moduleId));
   const unitNumber = $derived(course && mod ? course.modules.indexOf(mod) + 1 : 0);
   const items = $derived(course ? flattenCourse(course) : []);
@@ -38,7 +45,7 @@
   }
 
   function gateOf(item: FlatItem | undefined): Gate {
-    return course && item ? gateForItem(course, mastery, item, app.settings.gatingMode) : openGate();
+    return course && item ? gateForItem(course, mastery, item, cs.gatingMode) : openGate();
   }
 
   /** Lesson id -> skill id, when that lesson has questions worth a practice set. */
@@ -93,6 +100,21 @@
     if (item) openItem(item.id);
   }
 
+  /** Memory strength of a skill in percent, or null before its first answer. */
+  function memoryOf(skillId: string): number | null {
+    const r = skillRetention(mastery, skillId);
+    return r === undefined ? null : Math.round(r * 100);
+  }
+
+  const unitTotals = $derived.by(() => {
+    if (!mod) return { lessons: 0, questions: 0, minutes: 0 };
+    return {
+      lessons: mod.lessons.length,
+      questions: mod.lessons.reduce((n, l) => n + lessonQuestionCount(l), 0),
+      minutes: mod.lessons.reduce((n, l) => n + readingMinutes(l, cs.explanationLanguage, cs.explanationLevel), 0)
+    };
+  });
+
   function openUnit(id: string) {
     navigate({ name: 'unit', courseId, moduleId: id });
     window.scrollTo({ top: 0 });
@@ -145,9 +167,14 @@
 
       <h1 class="cf-unit-title">{t('unit.heading', { n: unitNumber, title: mod.title })}</h1>
       <p class="cf-unit-mastery">{t('unit.masteryLine', { percent })}</p>
+      {#if extra}
+        <p class="cf-muted cf-small cf-unit-totals">{t('unit.totals', { lessons: unitTotals.lessons, questions: unitTotals.questions, minutes: unitTotals.minutes })}</p>
+      {/if}
+      <p class="cf-course-settings-link"><a href={'#/settings/' + encodeURIComponent(courseId)}><NavIcon name="settings" size={15} /> {t('course.settings')}</a></p>
 
-      <MasteryLegend />
+      {#if shows(layout, 'masteryLegend')}<MasteryLegend />{/if}
 
+      {#if shows(layout, 'skillRow')}
       <div class="cf-skill-row">
         {#each mod.lessons as lesson (lesson.id)}
           {@const skillId = practiceSkillOf(lesson)}
@@ -164,6 +191,7 @@
           </button>
         {/if}
       </div>
+      {/if}
 
       {#if weakSkillId}
         <button type="button" class="cf-btn cf-btn-secondary cf-weak" onclick={practiseWeak}>{t('gate.practiseWeak')}</button>
@@ -174,7 +202,7 @@
         {@render unitList()}
       </details>
 
-      {#if mod.summary}
+      {#if mod.summary && shows(layout, 'aboutCards')}
         <section class="cf-card">
           <h2>{t('unit.about')}</h2>
           <p>{mod.summary}</p>
@@ -189,9 +217,27 @@
         {@const gate = gateOf(flatFor(lesson.id))}
         {@const kind = lessonKind(lesson)}
         {@const skillId = practiceSkillOf(lesson)}
+        {#if simple}
+          <section class="cf-card cf-lesson-card cf-lesson-simple">
+            <div class="cf-lesson-simple-text">
+              <h2>{lesson.title}</h2>
+              {#if skillId}<p class="cf-small"><MasteryIcon tier={tierOf(skillId)} size={16} /> {tierName(tierOf(skillId))}</p>{/if}
+              {#if gate.locked}<p class="cf-gate"><NavIcon name="lock" size={13} /><span>{gateText(gate)}</span></p>{/if}
+            </div>
+            {#if !gate.locked}
+              <div class="cf-lesson-simple-actions">
+                <button type="button" class="cf-btn cf-btn-primary cf-btn-big" onclick={() => openItem(lesson.id)}>{t('unit.open')}</button>
+                {#if skillId}<button type="button" class="cf-btn cf-btn-secondary cf-btn-big" onclick={() => practise(skillId)}>{t('unit.practiceSkill')}</button>{/if}
+              </div>
+            {/if}
+          </section>
+        {:else}
         <section class="cf-card cf-lesson-card">
           <h2>{lesson.title}</h2>
           {#if lesson.goal}<p class="cf-muted">{lesson.goal}</p>{/if}
+          {#if extra}
+            <p class="cf-small cf-muted">{t('unit.lessonExtra', { minutes: readingMinutes(lesson, cs.explanationLanguage, cs.explanationLevel), n: lessonQuestionCount(lesson) })}</p>
+          {/if}
 
           <h3 class="cf-card-sub">{t('unit.learn')}</h3>
           <div class="cf-learn-row">
@@ -204,7 +250,7 @@
             <span class="cf-muted cf-kind-label">{t('unit.type.' + kind)}</span>
           </div>
           {#if gate.locked}
-            <p class="cf-gate"><NavIcon name="lock" size={13} /> {gateText(gate)} {t('gate.current', { current: gate.current, target: gate.target })}</p>
+            <p class="cf-gate"><NavIcon name="lock" size={13} /><span>{gateText(gate)} {t('gate.current', { current: gate.current, target: gate.target })}</span></p>
           {:else if gate.recommended}
             <p class="cf-muted cf-small">{t('gate.recommended', { requirement: gateText(gate) })}</p>
           {/if}
@@ -219,6 +265,10 @@
                 <span class="cf-practice-title">{lesson.title}</span>
                 <span class="cf-muted cf-small">{tierName(tier)}{#if fading(skillId)}<span class="cf-review-soon">{t('srs.reviewSoon')}</span>{/if}</span>
                 {#if tier !== 'mastered'}<span class="cf-small cf-levelup">{t('unit.levelUp', { n: questionsToLevelUp(total), m: total })}</span>{/if}
+                {#if extra}
+                  {@const memory = memoryOf(skillId)}
+                  <span class="cf-small cf-muted">{t('unit.skillExtra', { points: skillPoints(mastery, skillId), max: MASTERY.points.mastered })}{#if memory !== null}{', '}{t('unit.memory', { percent: memory })}{/if}</span>
+                {/if}
               </div>
               {#if gate.locked}
                 <span class="cf-muted cf-small"><NavIcon name="lock" size={13} /> {t('gate.locked')}</span>
@@ -228,6 +278,7 @@
             </div>
           {/if}
         </section>
+        {/if}
       {/each}
 
       {#if mod.test}
@@ -237,7 +288,7 @@
             <h2>{t('mastery.legend.test')}</h2>
             <p class="cf-muted">{t('mastery.pointsAvailable', { n: pool })}</p>
             {#if testGate.locked}
-              <p class="cf-gate"><NavIcon name="lock" size={13} /> {gateText(testGate)} {t('gate.current', { current: testGate.current, target: testGate.target })}</p>
+              <p class="cf-gate"><NavIcon name="lock" size={13} /><span>{gateText(testGate)} {t('gate.current', { current: testGate.current, target: testGate.target })}</span></p>
             {:else if testGate.recommended}
               <p class="cf-muted cf-small">{t('gate.recommended', { requirement: gateText(testGate) })}</p>
             {/if}
@@ -248,8 +299,8 @@
         </section>
       {/if}
 
-      {#if app.settings.showReflect && mod.lessons.some((l) => l.blocks.length > 0)}
-        {@const lang = app.settings.explanationLanguage}
+      {#if cs.showReflect && mod.lessons.some((l) => l.blocks.length > 0)}
+        {@const lang = cs.explanationLanguage}
         {#key mod.id}
           <ReflectCard
             scope="unit"

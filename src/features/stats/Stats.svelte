@@ -7,6 +7,7 @@
   import { skillPoints, tierForPoints } from '../../core/mastery.ts';
   import type { Course } from '../../core/types.ts';
   import { calibration } from '../../core/calibration.ts';
+  import { shows } from '../../core/layout.ts';
   import MasteryIcon from '../../ui/MasteryIcon.svelte';
   import MasteryLegend from '../../ui/MasteryLegend.svelte';
   import { t } from '../../i18n/i18n.ts';
@@ -87,6 +88,12 @@
     return course ? titleOf(course) : id;
   }
   const calib = $derived(calibration(Object.values(app.mastery)));
+  const deep = $derived(shows(app.settings.layout, 'deepStats'));
+
+  // The newest days are on the right; on a narrow screen start the calendar scrolled there.
+  function scrollToEnd(node: HTMLElement) {
+    node.scrollLeft = node.scrollWidth;
+  }
 </script>
 
 {#snippet tierBar(summary: MasterySummary, label: string)}
@@ -137,6 +144,7 @@
     </div>
   </div>
 
+  {#if deep}
   <section class="cf-prog-section">
     <div class="cf-prog-head">
       <div>
@@ -200,6 +208,7 @@
       </article>
     {/each}
   </section>
+  {/if}
 
   <section class="cf-prog-section">
     <h2>{t('stats.focus')}</h2>
@@ -222,6 +231,7 @@
     {/if}
   </section>
 
+  {#if deep}
   <section class="cf-prog-section">
     <h2>{t('stats.calibration')}</h2>
     <p class="cf-muted cf-small">{t('stats.calibrationHint')}</p>
@@ -241,7 +251,7 @@
 
   <section class="cf-prog-section">
     <h2>{t('stats.activity')}</h2>
-    <div class="activity-scroll">
+    <div class="activity-scroll" {@attach scrollToEnd}>
       <div class="activity-chart" role="group" aria-label={t('stats.dayView')}>
         <div class="activity-weekdays" aria-hidden="true">
           {#each weekdayLabels as label, index (index)}<span>{index % 2 === 0 ? label : ''}</span>{/each}
@@ -268,4 +278,5 @@
       <p class="cf-muted">{t('stats.noActivity')}</p>
     {/if}
   </section>
+  {/if}
 </section>

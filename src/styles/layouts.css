@@ -1,0 +1,228 @@
+/* Layouts (Settings > Layout), the bottom tab bar, per-course settings and phone fixes.
+   The layout is set as data-layout on <html>; what each layout shows is decided in core/layout.ts,
+   this file only changes how it looks. */
+
+/* ---------- bottom tab bar (phones; every screen in the Simple layout) ---------- */
+.cf-tabbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 35;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  padding: 4px 4px calc(4px + env(safe-area-inset-bottom, 0px));
+  background: var(--surface); border-top: 1px solid var(--line);
+  display: none;
+}
+.cf-tabbar a {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 52px; padding: 5px 2px;
+  color: var(--muted); text-decoration: none; font-size: 0.7rem; font-weight: 700; -webkit-tap-highlight-color: transparent;
+}
+.cf-tabbar a.active { color: var(--accent); }
+.cf-tab-icon { position: relative; display: inline-grid; place-items: center; width: 56px; height: 28px; border-radius: 14px; }
+.cf-tabbar a.active .cf-tab-icon { background: var(--accent-soft); }
+.cf-tab-badge {
+  position: absolute; top: -3px; right: 6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
+  background: var(--bad); color: #fff; font-size: 0.65rem; line-height: 18px; text-align: center;
+}
+.cf-tab-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 900px) {
+  .cf-tabbar { display: grid; }
+  .cf-has-tabs .cf-page { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+  .cf-has-tabs ~ .toast { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
+}
+:root[data-layout='simple'] .cf-tabbar { display: grid; }
+:root[data-layout='simple'] .cf-has-tabs .cf-page { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+:root[data-layout='simple'] .cf-has-tabs ~ .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+@media (min-width: 901px) {
+  :root[data-layout='simple'] .cf-tabbar {
+    left: 50%; right: auto; bottom: 16px; width: min(560px, calc(100% - 32px)); padding: 4px;
+    transform: translateX(-50%); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow-float);
+  }
+}
+
+/* ---------- layout: simple ---------- */
+:root[data-layout='simple'] .cf-header-left .cf-explore,
+:root[data-layout='simple'] .cf-search { display: none; }
+:root[data-layout='simple'] .cf-menu-btn { display: inline-flex; }
+:root[data-layout='simple'] .cf-header-inner { grid-template-columns: auto 1fr auto; }
+:root[data-layout='simple'] .cf-brand { justify-self: center; }
+:root[data-layout='simple'] .cf-with-nav { display: block; max-width: 800px; }
+:root[data-layout='simple'] .cf-with-nav > .cf-learner-nav { display: none; }
+:root[data-layout='simple'] .cf-main { padding: 24px 0 0; border-left: 0; }
+:root[data-layout='simple'] .cf-course-layout,
+:root[data-layout='simple'] .cf-unit-layout { display: block; }
+:root[data-layout='simple'] .cf-course-side,
+:root[data-layout='simple'] .cf-unit-side { display: none; }
+:root[data-layout='simple'] .cf-course-main,
+:root[data-layout='simple'] .cf-unit-main { max-width: 800px; margin: 0 auto; }
+:root[data-layout='simple'] .cf-unit-mobile-list { display: block; margin-top: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; }
+:root[data-layout='simple'] .cf-unit-mobile-list summary { padding: 12px 16px; font-weight: 700; cursor: pointer; }
+:root[data-layout='simple'] .cf-btn,
+:root[data-layout='simple'] .btn { min-height: 48px; padding-inline: 20px; font-size: 1rem; }
+:root[data-layout='simple'] .cf-btn-small { min-height: 44px; }
+:root[data-layout='simple'] .option { padding: 1rem 1.1rem; font-size: 1.05rem; }
+:root[data-layout='simple'] .cf-unit-title { font-size: 2rem; }
+.cf-simple-greeting { margin: 0 0 20px; font-size: 1.3rem; font-weight: 700; }
+.cf-btn-big { min-height: 52px; padding-inline: 24px; font-size: 1.05rem; }
+
+.cf-big-courses { list-style: none; margin: 24px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.cf-big-course {
+  display: flex; flex-direction: column; gap: 6px; padding: 24px; background: var(--surface);
+  border: 1px solid var(--line); border-top: 6px solid var(--course-accent, var(--accent)); border-radius: 8px;
+}
+.cf-big-course h2 { margin: 0; font-size: 1.35rem; }
+.cf-big-course p { margin: 0; }
+.cf-big-course .cf-btn { margin-top: 12px; align-self: stretch; }
+.cf-progress-wide { width: 100%; height: 10px; border-radius: 5px; margin-top: 8px; }
+
+.cf-lesson-simple { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 24px; }
+.cf-lesson-simple-text { flex: 1 1 240px; min-width: 0; }
+.cf-lesson-simple-text h2 { margin-bottom: 4px; }
+.cf-lesson-simple-text p { display: flex; align-items: center; gap: 6px; margin: 0; }
+.cf-lesson-simple-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+@media (max-width: 600px) {
+  .cf-lesson-simple-actions { width: 100%; }
+  .cf-lesson-simple-actions .cf-btn { flex: 1 1 0; }
+}
+
+/* ---------- layout: detailed ---------- */
+.cf-stat-strip {
+  list-style: none; margin: 16px 0 28px; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 4px; overflow: hidden;
+}
+.cf-stat-strip li { display: flex; flex-direction: column; gap: 2px; padding: 14px 16px; background: var(--surface); }
+.cf-stat-strip strong { font-size: 1.5rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.cf-stat-strip span { font-size: 0.8rem; color: var(--muted); }
+.cf-unit-extra { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
+.cf-unit-extra .cf-progress { width: 120px; }
+.cf-library-extra { margin: 4px 0 6px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.cf-unit-totals { margin: 4px 0 0; }
+
+/* ---------- layout: compact ---------- */
+:root[data-layout='compact'] { --cf-header-h: 50px; }
+:root[data-layout='compact'] .cf-hint,
+:root[data-layout='compact'] .page-intro { display: none; }
+:root[data-layout='compact'] .stack { gap: 0.75rem; }
+:root[data-layout='compact'] fieldset { padding: 0.8rem 1rem; gap: 0.55rem; }
+:root[data-layout='compact'] .cf-page { padding-top: 16px; }
+:root[data-layout='compact'] .cf-main { padding-top: 16px; }
+:root[data-layout='compact'] .cf-with-nav { grid-template-columns: 200px minmax(0, 1fr); }
+:root[data-layout='compact'] .cf-learner-nav { padding: 12px 0; }
+:root[data-layout='compact'] .cf-learner-nav a { padding: 6px 20px; }
+:root[data-layout='compact'] .cf-learner-nav ul { margin-bottom: 14px; }
+:root[data-layout='compact'] .cf-streakbar-inner { min-height: 44px; }
+:root[data-layout='compact'] .cf-streak-greeting { font-size: 1rem; }
+:root[data-layout='compact'] .cf-section-head { margin-bottom: 12px; }
+:root[data-layout='compact'] .cf-section-head h1,
+:root[data-layout='compact'] .page-head h1,
+:root[data-layout='compact'] .page-title-group h1 { font-size: 1.45rem; }
+:root[data-layout='compact'] .cf-course-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px 28px; }
+:root[data-layout='compact'] .cf-timeline { padding-top: 10px; }
+:root[data-layout='compact'] .cf-timeline li { grid-template-columns: 26px minmax(0, 1fr) auto; gap: 10px; padding-bottom: 8px; }
+:root[data-layout='compact'] .cf-timeline li:not(:last-child)::before { left: 12px; top: 26px; }
+:root[data-layout='compact'] .cf-unit-dot { width: 26px; height: 26px; font-size: 0.75rem; }
+:root[data-layout='compact'] .cf-unit-text { padding-top: 2px; }
+:root[data-layout='compact'] .cf-card { margin-top: 12px; padding: 14px 18px; }
+:root[data-layout='compact'] .cf-card h2 { margin-bottom: 6px; font-size: 1.15rem; }
+:root[data-layout='compact'] .cf-card-sub { margin: 10px 0 6px; }
+:root[data-layout='compact'] .cf-practice-row { padding: 8px 12px; }
+:root[data-layout='compact'] .cf-unit-main,
+:root[data-layout='compact'] .cf-course-main { padding-top: 16px; }
+:root[data-layout='compact'] .cf-unit-title { margin-top: 8px; font-size: 1.6rem; }
+:root[data-layout='compact'] .cf-unit-list button { padding: 8px 16px; }
+:root[data-layout='compact'] .course-row { padding: 0.55rem 0; }
+:root[data-layout='compact'] .option { padding: 0.5rem 0.75rem; }
+:root[data-layout='compact'] .cf-btn { min-height: 34px; }
+@media (max-width: 1100px) {
+  :root[data-layout='compact'] .cf-course-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 900px) {
+  :root[data-layout='compact'] .cf-course-grid { grid-template-columns: minmax(0, 1fr); }
+  :root[data-layout='compact'] .cf-with-nav { display: block; }
+}
+
+/* ---------- settings: per-course scope and the layout picker ---------- */
+.cf-scope { display: grid; gap: 8px; padding: 16px 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; }
+.cf-scope label { font-size: 0.9rem; }
+.cf-scope select { max-width: 28rem; }
+.cf-scope p { margin: 0; }
+.cf-settings-course .cf-scope { background: var(--accent-soft); border-color: var(--accent); }
+.cf-own-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: -0.4rem 0 0; }
+.cf-own { display: inline-block; padding: 1px 8px; border-radius: 4px; background: var(--accent); color: var(--accent-ink); font-size: 0.75rem; font-weight: 700; }
+.cf-course-settings { list-style: none; margin: 0; padding: 0; display: grid; }
+.cf-course-settings li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.cf-course-settings-link { margin: 8px 0 0; font-size: 0.9rem; }
+.cf-course-settings-link a { display: inline-flex; align-items: center; gap: 6px; color: var(--accent); text-decoration: none; font-weight: 700; }
+.cf-course-settings-link a:hover { text-decoration: underline; }
+
+.cf-layouts { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.cf-layout-choice {
+  display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: 10px; text-align: left;
+  font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; cursor: pointer;
+}
+.cf-layout-choice:hover { border-color: var(--accent); }
+.cf-layout-choice[aria-pressed='true'] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--accent-soft); }
+.cf-layout-name { font-weight: 700; }
+.cf-layout-hint { font-size: 0.8rem; color: var(--muted); line-height: 1.35; }
+.cf-wire { position: relative; display: block; height: 84px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); overflow: hidden; }
+.cf-wire i { position: absolute; display: block; background: color-mix(in srgb, var(--ink) 14%, transparent); }
+.cf-wire .w-head { left: 0; right: 0; top: 0; height: 12px; }
+.cf-wire .w-side { left: 6px; top: 18px; bottom: 6px; width: 24%; border-radius: 3px; }
+.cf-wire .w-main { left: 32%; right: 6px; top: 18px; bottom: 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: none; }
+.cf-wire .w-main b { display: block; border-radius: 3px; background: color-mix(in srgb, var(--accent) 32%, transparent); }
+.cf-wire .w-tabs { display: none; left: 0; right: 0; bottom: 0; height: 12px; }
+.cf-wire[data-wire='simple'] .w-side { display: none; }
+.cf-wire[data-wire='simple'] .w-main { left: 20%; right: 20%; bottom: 18px; grid-template-columns: 1fr; gap: 6px; }
+.cf-wire[data-wire='simple'] .w-main b:nth-child(n + 3) { display: none; }
+.cf-wire[data-wire='simple'] .w-tabs { display: block; }
+.cf-wire[data-wire='detailed'] .w-main { grid-template-columns: repeat(4, 1fr); grid-template-rows: 10px 1fr; gap: 3px; }
+.cf-wire[data-wire='detailed'] .w-main b {
+  background: repeating-linear-gradient(to bottom, color-mix(in srgb, var(--accent) 40%, transparent) 0 3px, transparent 3px 6px);
+}
+.cf-wire[data-wire='detailed'] .w-main b:first-child { grid-column: 1 / -1; background: color-mix(in srgb, var(--accent) 55%, transparent); }
+.cf-wire[data-wire='compact'] .w-head { height: 7px; }
+.cf-wire[data-wire='compact'] .w-side { top: 11px; left: 4px; bottom: 4px; width: 16%; }
+.cf-wire[data-wire='compact'] .w-main { top: 11px; left: 23%; right: 4px; bottom: 4px; grid-template-columns: 1fr; grid-template-rows: repeat(4, 1fr); gap: 3px; }
+
+/* ---------- phone fixes ---------- */
+label.check input[type='checkbox'] { flex: none; width: 1.2rem; height: 1.2rem; margin: 0; accent-color: var(--accent); }
+.cf-study-styles { display: grid; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); }
+.cf-calibration li > :last-child { white-space: nowrap; font-size: 0.85rem; }
+@media (max-width: 900px) {
+  /* iPhone zooms into any field with text under 16px, so every field stays at 16px or more. */
+  :root body :is(input, select, textarea):not([type='checkbox']):not([type='radio']):not([type='range']) { font-size: max(16px, 1rem); }
+  label.check { min-height: 44px; }
+}
+@media (max-width: 600px) {
+  fieldset { padding: 1rem 0.9rem 1.1rem; }
+  .cf-layouts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .cf-layout-choice { padding: 8px; }
+  .cf-wire { height: 64px; }
+  .cf-calibration li { grid-template-columns: 5.5rem minmax(0, 1fr) auto; gap: 0.5rem; }
+  .cf-test-card { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 12px 14px; align-items: start; }
+  .cf-test-card > .cf-btn { grid-column: 1 / -1; justify-self: stretch; }
+  .cf-scope select { max-width: none; }
+  .cf-course-settings li { flex-wrap: wrap; }
+}
+
+/* ---------- small fixes found on the phone ---------- */
+a.cf-btn, a.btn { text-decoration: none; }
+.cf-btn-icon { display: inline-flex; align-items: center; gap: 6px; }
+.cf-gate { align-items: flex-start; }
+.cf-gate > .icon { flex: none; margin-top: 3px; }
+.cf-simple-streak { display: inline-flex; align-items: center; gap: 4px; margin-left: 12px; color: #e35c20; font-size: 1rem; white-space: nowrap; }
+
+/* Compact on phones: icon-only tab bar, no sub-labels, less repetition. */
+:root[data-layout='compact'] .cf-card-sub,
+:root[data-layout='compact'] .cf-today .cf-muted.cf-small { display: none; }
+:root[data-layout='compact'] .cf-learn-row { margin-top: 6px; }
+:root[data-layout='compact'] .cf-practice-row { margin-top: 8px; }
+:root[data-layout='compact'] .theme-choices { grid-template-columns: repeat(auto-fit, minmax(6.8rem, 1fr)); }
+:root[data-layout='compact'] .cf-lesson-head h1 { font-size: 1.6rem; }
+@media (max-width: 900px) {
+  :root[data-layout='compact'] .cf-tabbar a { min-height: 40px; padding: 4px 2px; }
+  :root[data-layout='compact'] .cf-tab-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  :root[data-layout='compact'] .cf-has-tabs .cf-page { padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+  :root[data-layout='compact'] .cf-section-head h1,
+  :root[data-layout='compact'] .page-head h1,
+  :root[data-layout='compact'] .page-title-group h1 { font-size: 1.3rem; }
+  :root[data-layout='compact'] .cf-unit-title { font-size: 1.35rem; }
+  :root[data-layout='compact'] .cf-card { padding: 12px 14px; }
+}

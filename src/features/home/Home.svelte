@@ -17,6 +17,7 @@
     type ModuleStatus
   } from '../../core/home.ts';
   import { indexQuestions } from '../../core/mistakes.ts';
+  import { shows } from '../../core/layout.ts';
   import { dueCards, reviewedToday, todayQueue } from '../../core/srs.ts';
   import type { Course, Module } from '../../core/types.ts';
   import LearnerNav from '../../ui/LearnerNav.svelte';
@@ -28,6 +29,7 @@
   /** Unit rows shown before "See all" reveals the rest. */
   const MODULE_LIMIT = 5;
 
+  const layout = $derived(app.settings.layout);
   const today = $derived(dayKey(new Date()));
   const stats = $derived(computeStats(app.activity, today));
   const greeting = $derived(greetingFor(today, stats.streak));
@@ -91,7 +93,20 @@
   }
 
   function modulesOf(course: Course): Module[] {
-    return expanded[course.id] ? course.modules : course.modules.slice(0, MODULE_LIMIT);
+    return expanded[course.id] || shows(layout, 'allUnits') ? course.modules : course.modules.slice(0, MODULE_LIMIT);
+  }
+
+  /** The unit to carry on with in a course, for the big course cards of the Simple layout. */
+  function entryModule(course: Course): { module: Module; index: number } | undefined {
+    const id = entryModuleId(course, app.progress[course.id]);
+    const index = course.modules.findIndex((m) => m.id === id);
+    return index >= 0 ? { module: course.modules[index]!, index } : undefined;
+  }
+
+  function coursePercent(course: Course): number {
+    if (course.modules.length === 0) return 0;
+    const sum = course.modules.reduce((acc, m) => acc + moduleMasteryPercentFor(course.id, m.id), 0);
+    return Math.round(sum / course.modules.length);
   }
 
   function statusText(status: ModuleStatus): string {
@@ -99,6 +114,7 @@
   }
 </script>
 
+{#if shows(layout, 'streakBar')}
 <div class="cf-streakbar">
   <div class="cf-container cf-streakbar-inner">
     <p class="cf-streak-greeting">{t(greeting.key, greeting.vars)}</p>
@@ -124,6 +140,9 @@
   </div>
 </div>
 
+{/if}
+
+{#if shows(layout, 'profileBand')}
 <div class="cf-profile-band">
   <div class="cf-container cf-profile-inner">
     <span class="cf-avatar" style:background={app.settings.profileColor}>{initials}</span>
@@ -146,9 +165,14 @@
   </div>
 </div>
 
+{/if}
+
 <div class="cf-page cf-with-nav">
   <LearnerNav />
   <main class="cf-main">
+    {#if !shows(layout, 'streakBar')}
+      <p class="cf-simple-greeting">{t(greeting.key, greeting.vars)}{#if stats.streak > 0}<span class="cf-simple-streak"><NavIcon name="flame" size={18} />{t('home.simpleStreak', { n: stats.streak })}</span>{/if}</p>
+    {/if}
     <div class="cf-section-head">
       <h1>{t('home.myCourses')}</h1>
       {#if courses.length > 0}
@@ -187,6 +211,16 @@
           {/if}
         </div>
       </section>
+      {#if shows(layout, 'extraStats')}
+        <ul class="cf-stat-strip" aria-label={t('home.statsLabel')}>
+          <li><strong>{today_.cards.length}</strong><span>{t('home.stat.due')}</span></li>
+          <li><strong>{reviewedToday(app.mastery, new Date())}</strong><span>{t('home.stat.reviewed')}</span></li>
+          <li><strong>{todayXp}</strong><span>{t('home.stat.xpToday')}</span></li>
+          <li><strong>{stats.streak}</strong><span>{t('home.stat.streakDays')}</span></li>
+          <li><strong>{skills.done} / {skills.total}</strong><span>{t('home.stat.skills')}</span></li>
+          <li><strong>{stats.totalXp.toLocaleString(app.settings.uiLanguage)}</strong><span>{t('home.stat.totalXp')}</span></li>
+        </ul>
+      {/if}
     {/if}
 
     {#if courses.length === 0}
@@ -198,6 +232,24 @@
           <button type="button" class="cf-btn cf-btn-secondary" onclick={() => navigate({ name: 'prompt' })}>{t('home.create')}</button>
         </div>
       </div>
+    {:else if shows(layout, 'bigCourseCards')}
+      <ul class="cf-big-courses">
+        {#each courses as course (course.id)}
+          {@const entry = entryModule(course)}
+          {@const pct = coursePercent(course)}
+          <li class="cf-big-course" style:--course-accent={courseAccent(course.id)}>
+            <h2>{displayTitle(course)}</h2>
+            {#if entry}<p class="cf-muted">{t('unit.heading', { n: entry.index + 1, title: entry.module.title })}</p>{/if}
+            <span class="cf-progress cf-progress-wide" role="progressbar" aria-valuenow={pct} aria-valuemin="0" aria-valuemax="100" aria-label={t('home.courseMastery', { percent: pct })}><span style:width={pct + '%'}></span></span>
+            <p class="cf-small">{t('home.courseMastery', { percent: pct })}</p>
+            {#if entry}
+              <button type="button" class="cf-btn cf-btn-primary cf-btn-big" onclick={() => openModule(course, entry.module)}>
+                {app.progress[course.id] ? t('home.resume') : t('home.start')}
+              </button>
+            {/if}
+          </li>
+        {/each}
+      </ul>
     {:else}
       <div class="cf-course-grid">
         {#each courses as course (course.id)}
@@ -206,7 +258,7 @@
           <section class="cf-course-group">
             <header>
               <h2>{displayTitle(course)}</h2>
-              {#if course.modules.length > MODULE_LIMIT}
+              {#if course.modules.length > MODULE_LIMIT && !shows(layout, 'allUnits')}
                 <button type="button" class="cf-link" onclick={() => (expanded[course.id] = !expanded[course.id])}>
                   {expanded[course.id] ? t('home.showLess') : t('home.seeAll', { n: course.modules.length })}
                 </button>
@@ -224,6 +276,12 @@
                     <div class="cf-unit-text">
                       <button type="button" class="cf-link cf-unit-link" onclick={() => openModule(course, module)}>{module.title}</button>
                       {#if statusText(status)}<span class="cf-unit-status">{statusText(status)}</span>{/if}
+                      {#if shows(layout, 'extraStats')}
+                        <span class="cf-unit-extra">
+                          <span class="cf-progress" aria-hidden="true"><span style:width={percent + '%'}></span></span>
+                          <span class="cf-small cf-muted">{t('home.unitExtra', { percent, n: module.lessons.length })}</span>
+                        </span>
+                      {/if}
                     </div>
                     {#if module.id === entryId}
                       <button type="button" class="cf-btn cf-btn-primary cf-btn-small" onclick={() => openModule(course, module)}>

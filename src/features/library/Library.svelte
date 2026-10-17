@@ -3,6 +3,7 @@
   import {
     app,
     displayTitle,
+    moduleMasteryPercentFor,
     navigate,
     removeCourse,
     renameCourse,
@@ -15,7 +16,23 @@
   import { courseProgressPercent, flattenCourse } from '../../core/course-utils.ts';
   import { backupStatus } from '../../core/backup.ts';
   import type { Course } from '../../core/types.ts';
+  import { lessonQuestionCount, shows } from '../../core/layout.ts';
+  import { dueCards } from '../../core/srs.ts';
+  import { indexQuestions } from '../../core/mistakes.ts';
   import { t } from '../../i18n/i18n.ts';
+
+  const layout = $derived(app.settings.layout);
+  const extra = $derived(shows(layout, 'extraStats'));
+
+  /** Extra numbers for the Detailed layout: lessons, questions, mastery and due reviews. */
+  function courseExtra(course: Course) {
+    const lessons = course.modules.reduce((n, m) => n + m.lessons.length, 0);
+    const questions = course.modules.reduce((n, m) => n + m.lessons.reduce((q, l) => q + lessonQuestionCount(l), 0), 0);
+    const ids = indexQuestions(course);
+    const due = dueCards([course], app.mastery, (_, qid) => ids.has(qid)).length;
+    const mastery = course.modules.length === 0 ? 0 : Math.round(course.modules.reduce((n, m) => n + moduleMasteryPercentFor(course.id, m.id), 0) / course.modules.length);
+    return { lessons, questions, due, mastery };
+  }
 
   let showArchived = $state(false);
   let searchText = $state('');
@@ -126,7 +143,7 @@
     <div class="backup-inline" role="status"><span class="backup-mark" aria-hidden="true">!</span><span>{t('backup.warn')} <span class="muted">{backupText}</span></span><button type="button" class="backup-dismiss" aria-label={t('backup.dismiss')} title={t('backup.dismiss')} onclick={() => updateSettings({ backupReminderDismissed: true })}>×</button></div>
   {/if}
 
-  {#if app.courses.length > 0}
+  {#if app.courses.length > 0 && shows(layout, 'libraryTools')}
     <div class="library-toolbar">
       <label class="library-search" for="course-search">
         <span class="sr-only">{t('library.search')}</span>
@@ -174,8 +191,12 @@
           <div class="course-main">
             <p class="course-subject">{isCurrent ? t('library.continueSection') : course.subject || course.level || t('library.courseLabel')}{#if archived}<span class="course-archived">, {t('library.archived')}</span>{/if}</p>
             <h2>{displayTitle(course)}</h2>
-            <p class="muted course-summary">{#if isCurrent && (resumeItem?.title || resumeItem?.moduleTitle)}{resumeItem?.title || resumeItem?.moduleTitle}<span>, </span>{/if}{t(flattenCourse(course).length === 1 ? 'library.partOne' : 'library.partMany', { n: flattenCourse(course).length })}{#if course.level && course.subject}<span>, </span>{course.level}{/if}</p>
-            {#if tags.length > 0}
+            <p class="muted course-summary">{#if isCurrent && (resumeItem?.title || resumeItem?.moduleTitle)}{resumeItem?.title || resumeItem?.moduleTitle}{', '}{/if}{t(flattenCourse(course).length === 1 ? 'library.partOne' : 'library.partMany', { n: flattenCourse(course).length })}{#if course.level && course.subject}{', '}{course.level}{/if}</p>
+            {#if extra}
+              {@const x = courseExtra(course)}
+              <p class="cf-small cf-library-extra">{t('library.extra', { lessons: x.lessons, questions: x.questions, mastery: x.mastery, due: x.due })}</p>
+            {/if}
+            {#if tags.length > 0 && shows(layout, 'libraryTools')}
               <div class="course-tags" aria-label={t('library.tags')}>
                 {#each tags as tag (tag)}<span class="tag-chip">{tag}</span>{/each}
               </div>
@@ -203,7 +224,7 @@
               </div>
               <p class="muted small">{t('library.progress', { percent: pct })}</p>
             {/if}
-            {#if app.settings.libraryShowLastOpened && last && app.progress[course.id]?.position}
+            {#if (app.settings.libraryShowLastOpened || extra) && last && app.progress[course.id]?.position}
               <p class="muted small course-last-opened">{t('library.lastOpened', { date: formatDate(last) })}</p>
             {/if}
           </div>
@@ -217,6 +238,7 @@
                 <button type="button" onclick={() => rename(course.id, displayTitle(course))}>{t('library.rename')}</button>
                 <button type="button" onclick={() => setArchived(course.id, !archived)}>{archived ? t('library.unarchive') : t('library.archive')}</button>
                 <button type="button" onclick={() => startTagEdit(course)}>{t('library.editTags')}</button>
+                <button type="button" onclick={() => navigate({ name: 'settings', courseId: course.id })}>{t('course.settings')}</button>
                 <button type="button" class="danger-text" onclick={() => remove(course)}>{t('library.delete')}</button>
               </div>
             </details>

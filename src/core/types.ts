@@ -349,7 +349,35 @@ export interface Settings {
   readingFont: 'default' | 'hyperlegible';
   /** Line spacing for lesson text. */
   lineSpacing: 'normal' | 'relaxed' | 'loose';
+  /** How screens are laid out: how much is shown and how dense it is. */
+  layout: LayoutMode;
+  /** 'desktop' renders the wide layout on phones and tablets too (like "request desktop site"). */
+  screenMode: 'auto' | 'desktop';
+  /** Per-course learning settings that replace the app-wide ones for that course. */
+  courseOverrides: Record<string, CourseOverrides>;
 }
+
+export type LayoutMode = 'standard' | 'simple' | 'detailed' | 'compact';
+
+/** The settings a single course can change for itself. */
+export type CourseSettingKey =
+  | 'explanationLevel'
+  | 'explanationLanguage'
+  | 'questionLanguage'
+  | 'autoplayVideo'
+  | 'gatingMode'
+  | 'desiredRetention'
+  | 'askConfidence'
+  | 'recallFirst'
+  | 'showWarmups'
+  | 'showReflect'
+  | 'allowHints'
+  | 'acceptTypos'
+  | 'interleavePractice'
+  | 'celebrations'
+  | 'sounds';
+
+export type CourseOverrides = Partial<Pick<Settings, CourseSettingKey>>;
 
 /** A deleted course kept in the trash until it is restored or purged. */
 export interface TrashedCourse {
@@ -440,7 +468,7 @@ export type Route =
   | { name: 'unit'; courseId: string; moduleId: string }
   | { name: 'import' }
   | { name: 'prompt' }
-  | { name: 'settings' }
+  | { name: 'settings'; courseId?: string }
   | { name: 'profile' }
   | { name: 'stats' }
   | { name: 'review' }

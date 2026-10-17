@@ -11,7 +11,7 @@ export function formatHash(route: Route): string {
     case 'prompt':
       return '#/prompt';
     case 'settings':
-      return '#/settings';
+      return route.courseId ? `#/settings/${encodeURIComponent(route.courseId)}` : '#/settings';
     case 'profile':
       return '#/profile';
     case 'stats':
@@ -41,7 +41,7 @@ export function parseHash(hash: string): Route {
   if (first === 'library') return { name: 'library' };
   if (first === 'import') return { name: 'import' };
   if (first === 'prompt') return { name: 'prompt' };
-  if (first === 'settings') return { name: 'settings' };
+  if (first === 'settings') return second ? { name: 'settings', courseId: decodeURIComponent(second) } : { name: 'settings' };
   if (first === 'profile') return { name: 'profile' };
   if (first === 'stats') return { name: 'stats' };
   if (first === 'review') return { name: 'review' };

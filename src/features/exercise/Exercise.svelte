@@ -3,7 +3,7 @@
   // first), and the existing quiz renderer runs it and shows the results screen. Nothing about the
   // run is duplicated here - this screen only chooses the questions and wires up the context.
   import { untrack } from 'svelte';
-  import { app, displayTitle, getCourse, navigate } from '../../core/state.svelte.ts';
+  import { app, courseSettings, displayTitle, getCourse, navigate } from '../../core/state.svelte.ts';
   import { studyContext } from '../../core/studyContext.ts';
   import { buildExerciseSet, interleaveExtras, mixIntoSet, type ExerciseSet } from '../../core/exercise.ts';
   import { retrievability } from '../../core/srs.ts';
@@ -36,7 +36,7 @@
       const now = new Date();
       const mastery = app.mastery[courseId];
       const base = buildExerciseSet(c, skillId, currentSeed, { mastery, now });
-      if (!app.settings.interleavePractice || base.questions.length < 4) return base;
+      if (!courseSettings(courseId).interleavePractice || base.questions.length < 4) return base;
       // Mix in up to two questions from earlier lessons (interleaving).
       const cards = mastery?.cards ?? {};
       const extras = interleaveExtras(c, skillId, {

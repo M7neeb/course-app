@@ -3,7 +3,7 @@
   // a check once done and a lock when gated), its practice skills with their mastery squares, and
   // the other units folded away. The exact gate requirement is explained in the lesson itself, so
   // the sidebar stays a clean list. Shown beside the player and inside the phone drawer.
-  import { app, displayTitle, getCourse, navigate } from '../../core/state.svelte.ts';
+  import { app, courseSettings, displayTitle, getCourse, navigate } from '../../core/state.svelte.ts';
   import { flattenCourse, lessonKind, type FlatItem } from '../../core/course-utils.ts';
   import { gateForItem, openGate, type Gate } from '../../core/gating.ts';
   import { courseSkills, skillPoints, skillTitle, tierForPoints } from '../../core/mastery.ts';
@@ -36,7 +36,7 @@
   );
 
   function gateOf(item: FlatItem): Gate {
-    return course ? gateForItem(course, mastery, item, app.settings.gatingMode) : openGate();
+    return course ? gateForItem(course, mastery, item, courseSettings(courseId).gatingMode) : openGate();
   }
 
   function itemTitle(item: FlatItem): string {

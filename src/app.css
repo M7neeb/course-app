@@ -170,7 +170,7 @@ a:hover { text-decoration-thickness: 2px; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .file-button { cursor: pointer; }
 .link { font: inherit; background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; text-decoration: underline; }
-input[type='text'], input[type='url'], input[type='number'], select, textarea {
+input[type='text'], input[type='url'], input[type='number'], input[type='search'], select, textarea {
   font: inherit; width: 100%; padding: 0.62rem 0.78rem; border-radius: 12px;
   border: 1px solid var(--line); background: var(--surface); color: var(--ink);
 }

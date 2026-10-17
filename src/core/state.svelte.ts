@@ -2,7 +2,7 @@
 // only these functions write to storage.
 
 import { storage } from './storage.ts';
-import { defaultSettings } from './settings.ts';
+import { defaultSettings, patchOverrides, settingsFor } from './settings.ts';
 import { formatHash, parseHash } from './router.ts';
 import { flattenCourse } from './course-utils.ts';
 import { newProgress, pruneProgress } from './progress.ts';
@@ -31,6 +31,7 @@ import type {
   Reflection,
   Route,
   Settings,
+  CourseSettingKey,
   SkillMastery,
   TrashedCourse
 } from './types.ts';
@@ -136,6 +137,27 @@ export function displayTitle(course: Course): string {
 export async function updateSettings(patch: Partial<Settings>): Promise<void> {
   app.settings = { ...app.settings, ...patch };
   await storage.saveSettings($state.snapshot(app.settings) as Settings);
+}
+
+/** The settings that apply inside a course: app settings plus the course's own choices. */
+export function courseSettings(courseId: string | null | undefined): Settings {
+  return settingsFor(app.settings, courseId);
+}
+
+/** Changes a course's own settings; a `null` value makes that setting follow the app again. */
+export async function updateCourseSettings(courseId: string, patch: Partial<Record<CourseSettingKey, unknown>>): Promise<void> {
+  const next = patchOverrides(app.settings.courseOverrides?.[courseId], patch);
+  const all = { ...(app.settings.courseOverrides ?? {}) };
+  if (Object.keys(next).length > 0) all[courseId] = next;
+  else delete all[courseId];
+  await updateSettings({ courseOverrides: all });
+}
+
+/** Removes every course-specific setting of a course. */
+export async function resetCourseSettings(courseId: string): Promise<void> {
+  const all = { ...(app.settings.courseOverrides ?? {}) };
+  delete all[courseId];
+  await updateSettings({ courseOverrides: all });
 }
 
 /** Saves a course. If it already exists its content is replaced and progress is kept. */
@@ -306,7 +328,7 @@ export function recordMasteryAttempt(courseId: string, attempt: MasteryAttempt, 
       skillId,
       { correct: attempt.correct, usedHint: attempt.usedHint, confidence: attempt.confidence },
       now,
-      app.settings.desiredRetention
+      courseSettings(courseId).desiredRetention
     ),
     mistakes: [...current.mistakes, entry].slice(-MASTERY.mistakeLogLimit),
     updatedAt: now.toISOString()

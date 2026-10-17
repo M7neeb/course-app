@@ -13,6 +13,7 @@ import '@fontsource/atkinson-hyperlegible/latin-ext-400.css';
 import '@fontsource/atkinson-hyperlegible/latin-ext-700.css';
 import './app.css';
 import './styles/theme.css';
+import './styles/layouts.css';
 import './blocks/index.ts';
 import App from './App.svelte';
 

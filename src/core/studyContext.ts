@@ -4,6 +4,7 @@
 
 import {
   app,
+  courseSettings,
   displayTitle,
   getCourse,
   moduleMasteryPercentFor,
@@ -34,22 +35,24 @@ export function studyContext(courseId: string, item: StudyItem, options: StudyOp
   const course = getCourse(courseId);
   const questionSkills = course ? skillIndex(course) : new Map<string, string>();
   const media = options.media === true;
+  // The course's own settings win over the app-wide ones.
+  const settings = courseSettings(courseId);
   return {
     courseId,
     lessonId: item.lessonId,
     itemKind: item.itemKind,
     moduleId: item.moduleId,
-    explanationLevel: app.settings.explanationLevel,
-    explanationLanguage: app.settings.explanationLanguage,
-    questionLanguage: app.settings.questionLanguage,
-    autoplayVideo: app.settings.autoplayVideo,
-    askConfidence: app.settings.askConfidence,
-    recallFirst: app.settings.recallFirst,
-    allowHints: app.settings.allowHints,
-    acceptTypos: app.settings.acceptTypos,
-    showWarmups: app.settings.showWarmups,
-    sounds: app.settings.sounds,
-    celebrations: app.settings.celebrations,
+    explanationLevel: settings.explanationLevel,
+    explanationLanguage: settings.explanationLanguage,
+    questionLanguage: settings.questionLanguage,
+    autoplayVideo: settings.autoplayVideo,
+    askConfidence: settings.askConfidence,
+    recallFirst: settings.recallFirst,
+    allowHints: settings.allowHints,
+    acceptTypos: settings.acceptTypos,
+    showWarmups: settings.showWarmups,
+    sounds: settings.sounds,
+    celebrations: settings.celebrations,
     courseTitle: course ? displayTitle(course) : courseId,
     getAnswer: (qid) => app.progress[courseId]?.answers[qid],
     recordAnswer: (qid, record) => {

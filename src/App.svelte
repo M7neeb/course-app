@@ -25,6 +25,7 @@
   import SearchBox from './ui/SearchBox.svelte';
   import ExploreMenu from './ui/ExploreMenu.svelte';
   import LearnerNav from './ui/LearnerNav.svelte';
+  import TabBar from './ui/TabBar.svelte';
   import { t } from './i18n/i18n.ts';
 
   const route = $derived(app.route);
@@ -65,19 +66,31 @@
     root.dataset.reduceMotion = String(app.settings.reduceMotion);
     root.dataset.readingFont = app.settings.readingFont;
     root.dataset.lineSpacing = app.settings.lineSpacing;
+    root.dataset.layout = app.settings.layout;
   });
 
-  // Close the drawer and menus whenever the route changes.
+  // "Always use the desktop layout": render the page 1100px wide on small screens and let the
+  // browser scale it down, the way "request desktop site" works.
+  $effect(() => {
+    const meta = document.querySelector('meta[name="viewport"]');
+    if (!meta) return;
+    const desktop = app.settings.screenMode === 'desktop' && Math.min(screen.width, screen.height) < 900;
+    meta.setAttribute('content', desktop ? 'width=1100, viewport-fit=cover' : 'width=device-width, initial-scale=1, viewport-fit=cover');
+  });
+
+  // Close the drawer and menus whenever the route changes, and start the new screen at the top
+  // (a tab bar link would otherwise open halfway down the page).
   $effect(() => {
     void route;
     drawerOpen = false;
     profileMenuOpen = false;
+    window.scrollTo({ top: 0 });
   });
 </script>
 
 <svelte:window onkeydown={onKeydown} />
 
-<div class="cf-app" class:focus-mode={app.focusMode}>
+<div class="cf-app" class:focus-mode={app.focusMode} class:cf-has-tabs={!courseRoute && !app.focusMode}>
   {#if !app.focusMode}
     <header class="cf-header" class:cf-header-dark={courseRoute}>
       <div class="cf-header-inner">
@@ -176,12 +189,16 @@
         {:else if route.name === 'trash'}
           <Trash />
         {:else}
-          <Settings />
+          <Settings courseId={route.courseId} />
         {/if}
       </main>
     </div>
   {/if}
 </div>
+
+{#if !courseRoute && !app.focusMode && app.ready}
+  <TabBar />
+{/if}
 
 {#if app.toast}
   <div class="toast" role="status">

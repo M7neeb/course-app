@@ -2,12 +2,14 @@
   import { untrack } from 'svelte';
   import {
     app,
+    courseSettings,
     displayTitle,
     getCourse,
     navigate,
     recordActivity,
     saveReflection,
     updateProgress,
+    updateCourseSettings,
     updateSettings
   } from '../../core/state.svelte.ts';
   import { blockLanguages, type Lang } from '../../core/localize.ts';
@@ -17,6 +19,7 @@
   import { studyContext } from '../../core/studyContext.ts';
   import { lessonDigest, lessonKeyPoints } from '../../core/reflect.ts';
   import ReflectCard from '../../ui/ReflectCard.svelte';
+  import { lessonQuestionCount, readingMinutes, shows } from '../../core/layout.ts';
   import type { BlockContext, MasteryTier } from '../../core/types.ts';
   import { getBlockRenderer } from '../../blocks/registry.ts';
   import UnknownBlock from '../../blocks/unknown/UnknownBlock.svelte';
@@ -47,8 +50,14 @@
   // The DE/EN switch only appears when this lesson really has content in both languages.
   const languages = $derived(current ? blockLanguages(current.blocks) : []);
 
+  // Settings inside this course: the course's own choices on top of the app settings.
+  const cs = $derived(courseSettings(courseId));
+
   function setLanguage(lang: Lang) {
-    void updateSettings({ explanationLanguage: lang, questionLanguage: lang });
+    // A course that has its own language keeps the switch to itself.
+    const own = app.settings.courseOverrides?.[courseId];
+    if (own?.explanationLanguage || own?.questionLanguage) void updateCourseSettings(courseId, { explanationLanguage: lang, questionLanguage: lang });
+    else void updateSettings({ explanationLanguage: lang, questionLanguage: lang });
   }
 
   let notes = $state('');
@@ -126,7 +135,7 @@
   // Gating: what has to be reached before this lesson, test or exam may be opened. In 'free' mode
   // nothing is locked, but the requirement still comes back as a recommendation.
   const gate = $derived(
-    course && current ? gateForItem(course, app.mastery[courseId], current, app.settings.gatingMode) : openGate()
+    course && current ? gateForItem(course, app.mastery[courseId], current, cs.gatingMode) : openGate()
   );
 
   // The skill a lesson practises: the lesson's own questions. Tests and exams have no single skill.
@@ -234,6 +243,9 @@
   <header class="cf-lesson-head">
     <h1>{itemTitle(current)}</h1>
     {#if current.goal}<p class="cf-lesson-goal">{current.goal}</p>{/if}
+    {#if shows(app.settings.layout, 'extraStats')}
+      <p class="cf-muted cf-small">{t('unit.lessonExtra', { minutes: readingMinutes(current, cs.explanationLanguage, cs.explanationLevel), n: lessonQuestionCount(current) })}</p>
+    {/if}
   </header>
 
   {#if gate.locked}
@@ -250,7 +262,7 @@
       {#if languages.length > 1}
         <div class="cf-segmented" role="group" aria-label={t('player.language')}>
           {#each languages as lang (lang)}
-            <button type="button" aria-pressed={app.settings.explanationLanguage === lang} onclick={() => setLanguage(lang)}>{t('lang.' + lang)}</button>
+            <button type="button" aria-pressed={cs.explanationLanguage === lang} onclick={() => setLanguage(lang)}>{t('lang.' + lang)}</button>
           {/each}
         </div>
       {/if}
@@ -259,6 +271,7 @@
           {@const skill = currentSkill}
           <button type="button" class="cf-btn cf-btn-secondary cf-btn-small" onclick={() => practiseSkill(skill.id)}>{t('exercise.practise')}</button>
         {/if}
+        <a class="cf-btn cf-btn-ghost cf-btn-small cf-btn-icon" href={'#/settings/' + encodeURIComponent(courseId)}><NavIcon name="settings" size={16} />{t('course.settings')}</a>
         <button type="button" class="cf-btn cf-btn-ghost cf-btn-small" aria-pressed={app.focusMode} onclick={() => (app.focusMode = !app.focusMode)}>
           {app.focusMode ? t('player.exitFocus') : t('player.focus')}
         </button>
@@ -288,15 +301,15 @@
         {/each}
       </div>
 
-      {#if current.kind === 'lesson' && app.settings.showReflect && course}
+      {#if current.kind === 'lesson' && cs.showReflect && course}
         {@const lesson = course.modules.flatMap((m) => m.lessons).find((l) => l.id === current.id)}
         {#if lesson && lesson.blocks.length > 0}
           {#key current.id}
             <ReflectCard
               topic={lesson.title}
-              points={lessonKeyPoints(lesson, app.settings.explanationLanguage)}
-              source={lessonDigest(lesson, app.settings.explanationLanguage)}
-              lang={app.settings.explanationLanguage}
+              points={lessonKeyPoints(lesson, cs.explanationLanguage)}
+              source={lessonDigest(lesson, cs.explanationLanguage)}
+              lang={cs.explanationLanguage}
               reflection={progress?.reflections?.[lesson.id]}
               onSave={(patch) => saveReflection(courseId, lesson.id, patch)}
             />

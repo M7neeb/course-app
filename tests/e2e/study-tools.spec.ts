@@ -45,7 +45,10 @@ test('study styles set the learning options, and recall-first hides the options'
 
 test('brain dump and explain it simply after a lesson', async ({ page }) => {
   const errors: string[] = [];
-  page.on('pageerror', (err) => errors.push(err.message));
+  // WebKit reports the lesson's YouTube preview being cut off by the reload as a NetworkError.
+  page.on('pageerror', (err) => {
+    if (!err.message.startsWith('NetworkError')) errors.push(err.message);
+  });
   await importSample(page);
   await page.goto('./#/course/networking-basics/m1-l1');
 

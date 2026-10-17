@@ -1,5 +1,5 @@
 import { normalizeColorTheme } from './themes.ts';
-import type { Settings } from './types.ts';
+import type { CourseOverrides, CourseSettingKey, Settings } from './types.ts';
 
 export function defaultSettings(): Settings {
   return {
@@ -34,7 +34,10 @@ export function defaultSettings(): Settings {
     sounds: false,
     dailyGoal: 50,
     readingFont: 'default',
-    lineSpacing: 'normal'
+    lineSpacing: 'normal',
+    layout: 'standard',
+    screenMode: 'auto',
+    courseOverrides: {}
   };
 }
 
@@ -100,5 +103,76 @@ export function mergeSettings(saved: unknown): Settings {
   if (typeof s.dailyGoal === 'number' && [0, 30, 50, 100, 200].includes(s.dailyGoal)) out.dailyGoal = s.dailyGoal;
   if (s.readingFont === 'default' || s.readingFont === 'hyperlegible') out.readingFont = s.readingFont;
   if (s.lineSpacing === 'normal' || s.lineSpacing === 'relaxed' || s.lineSpacing === 'loose') out.lineSpacing = s.lineSpacing;
+  if (s.layout === 'standard' || s.layout === 'simple' || s.layout === 'detailed' || s.layout === 'compact') out.layout = s.layout;
+  if (s.screenMode === 'auto' || s.screenMode === 'desktop') out.screenMode = s.screenMode;
+  out.courseOverrides = normalizeOverridesMap(s.courseOverrides);
   return out;
+}
+
+/** The settings a course can set for itself: how it is explained, asked and scheduled. */
+export const COURSE_SETTING_KEYS: readonly CourseSettingKey[] = [
+  'explanationLevel',
+  'explanationLanguage',
+  'questionLanguage',
+  'autoplayVideo',
+  'gatingMode',
+  'desiredRetention',
+  'askConfidence',
+  'recallFirst',
+  'showWarmups',
+  'showReflect',
+  'allowHints',
+  'acceptTypos',
+  'interleavePractice',
+  'celebrations',
+  'sounds'
+];
+
+/** Keeps only known course keys with valid values; anything else is dropped. */
+export function normalizeOverrides(raw: unknown): CourseOverrides {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return {};
+  const source = raw as Record<string, unknown>;
+  const base = defaultSettings();
+  const out: Record<string, unknown> = {};
+  for (const key of COURSE_SETTING_KEYS) {
+    if (!(key in source)) continue;
+    // Run the value through the normal validation: an invalid value falls back to the default,
+    // so it is kept only when it was accepted (possibly clamped) or really is the default.
+    const checked = mergeSettings({ [key]: source[key] })[key];
+    if (checked !== base[key] || source[key] === base[key]) out[key] = checked;
+  }
+  return out as CourseOverrides;
+}
+
+function normalizeOverridesMap(raw: unknown): Record<string, CourseOverrides> {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return {};
+  const out: Record<string, CourseOverrides> = {};
+  for (const [courseId, value] of Object.entries(raw as Record<string, unknown>)) {
+    const clean = normalizeOverrides(value);
+    if (Object.keys(clean).length > 0) out[courseId] = clean;
+  }
+  return out;
+}
+
+/** The settings that apply inside one course: the app settings with the course's own on top. */
+export function settingsFor(settings: Settings, courseId: string | null | undefined): Settings {
+  const own = courseId ? settings.courseOverrides?.[courseId] : undefined;
+  return own && Object.keys(own).length > 0 ? { ...settings, ...own } : settings;
+}
+
+/**
+ * New overrides after a change. A set value is pinned for the course even when it matches the app
+ * setting today; `null` removes the key so the course follows the app setting again.
+ */
+export function patchOverrides(
+  current: CourseOverrides | undefined,
+  patch: Partial<Record<CourseSettingKey, unknown>>
+): CourseOverrides {
+  const next: Record<string, unknown> = { ...(current ?? {}) };
+  for (const [key, value] of Object.entries(patch) as [CourseSettingKey, unknown][]) {
+    if (!COURSE_SETTING_KEYS.includes(key)) continue;
+    if (value === null || value === undefined) delete next[key];
+    else next[key] = value;
+  }
+  return normalizeOverrides(next);
 }

@@ -1,7 +1,7 @@
 // The single source of truth for the app version and the "What's new" list.
 // Bump VERSION and add one CHANGELOG entry at the top when you ship user-visible changes.
 
-export const VERSION = '1.2.0';
+export const VERSION = '1.3.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -11,6 +11,17 @@ export interface ChangelogEntry {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.3.0',
+    date: '2026-10-17',
+    changes: [
+      'Course settings: give each course its own learning settings, for example exam prep for one subject and relaxed for another. Open a course and choose Course settings.',
+      'Layouts in Settings: Standard, Simple (one column, big buttons, a tab bar), Detailed (memory strength, points, question counts and reading time) and Compact (more on one screen).',
+      'Use the desktop layout on a phone or tablet if you prefer it.',
+      'Phones get a tab bar at the bottom for Courses, Review, Library, Progress and Settings.',
+      'Phone fixes: the library search box, bigger checkboxes, no zooming in when you tap a text field, and the activity calendar opens at the latest weeks.'
+    ]
+  },
   {
     version: '1.2.0',
     date: '2026-10-17',
