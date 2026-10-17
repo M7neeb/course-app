@@ -672,3 +672,41 @@ fieldset, .notice, .banner { border-radius: 4px; box-shadow: none; }
 .cf-challenge-points { margin: 0.5rem 0 1rem; padding-left: 1.2rem; }
 .cf-challenge-points li { margin-bottom: 0.3rem; }
 .cf-unit-prompt-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; justify-content: flex-end; }
+
+/* Reading options (Settings > Reading). */
+[data-reading-font='hyperlegible'] .lesson-content,
+[data-reading-font='hyperlegible'] .question,
+[data-reading-font='hyperlegible'] .cf-reflect { font-family: 'Atkinson Hyperlegible', var(--sans); }
+[data-line-spacing='relaxed'] .lesson-content .prose,
+[data-line-spacing='relaxed'] .question-prompt { line-height: 1.8; }
+[data-line-spacing='loose'] .lesson-content .prose,
+[data-line-spacing='loose'] .question-prompt { line-height: 2.1; }
+
+/* Daily goal, calibration, reflect card, quiz extras. */
+.cf-today-text { flex: 1 1 18rem; }
+.cf-goal { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.5rem; max-width: 26rem; }
+.cf-goal .cf-progress { flex: 1; }
+.cf-calibration { list-style: none; margin: 0.5rem 0; padding: 0; display: grid; gap: 0.5rem; max-width: 36rem; }
+.cf-calibration li { display: grid; grid-template-columns: 6.5rem 1fr auto; gap: 0.7rem; align-items: center; }
+.cf-calib-label { font-weight: 700; }
+.cf-reflect { margin-top: 1.5rem; }
+.cf-reflect h2 { margin: 0 0 0.5rem; font-size: 1.15rem; }
+.cf-reflect textarea { width: 100%; font: inherit; padding: 0.6rem 0.75rem; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); }
+.cf-tabs { display: flex; gap: 0.25rem; margin-bottom: 0.75rem; border-bottom: 1px solid var(--line); }
+.cf-tabs button { border: 0; background: none; padding: 0.5rem 0.8rem; font: inherit; font-weight: 700; color: var(--muted); border-bottom: 3px solid transparent; cursor: pointer; min-height: 40px; }
+.cf-tabs button.active { color: var(--accent); border-bottom-color: var(--accent); }
+.cf-keypoints { list-style: none; margin: 0.5rem 0; padding: 0; display: grid; gap: 0.35rem; }
+.cf-keypoints .check { display: flex; gap: 0.5rem; align-items: flex-start; }
+.cf-keypoints input { margin-top: 0.3rem; }
+.cf-missed { font-weight: 700; }
+.cf-reflect-score { margin: 0 0 0.25rem; }
+.cf-reflect-checks { margin: 0.5rem 0; padding-left: 1.2rem; color: var(--muted); }
+.cf-jargon { margin: 0.4rem 0; padding: 0.4rem 0.7rem; border-radius: 8px; background: var(--accent-soft); }
+.cf-pre { white-space: pre-wrap; margin: 0.4rem 0; }
+.in-a-row { margin-left: 0.6rem; padding: 0 0.5rem; border-radius: 999px; background: #594094; color: #fff; font-weight: 700; font-size: 0.8rem; }
+.recall-first { display: grid; gap: 0.5rem; margin: 0.4rem 0 0.8rem; }
+.recall-first textarea { width: 100%; font: inherit; padding: 0.55rem 0.7rem; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); }
+.recall-first .btn { justify-self: start; }
+.typo-note { margin: 0.2rem 0; color: var(--muted); }
+.cf-study-styles { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.25rem 0 0.75rem; }
+.settings-sub { margin: 0.6rem 0 -0.3rem; font-size: 1rem; }

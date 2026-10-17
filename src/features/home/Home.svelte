@@ -20,6 +20,7 @@
   import { dueCards, reviewedToday, todayQueue } from '../../core/srs.ts';
   import type { Course, Module } from '../../core/types.ts';
   import LearnerNav from '../../ui/LearnerNav.svelte';
+  import Celebrate from '../../ui/Celebrate.svelte';
   import MasteryIcon from '../../ui/MasteryIcon.svelte';
   import NavIcon from '../../ui/NavIcon.svelte';
   import { t } from '../../i18n/i18n.ts';
@@ -68,6 +69,10 @@
     return todayQueue(due, reviewedToday(app.mastery, now), app.settings.dailyReviewLimit);
   });
   const continueCourse = $derived(courses[0]);
+  // Daily goal, in energy points (XP) earned today. Kept separate from the streak on purpose.
+  const goal = $derived(app.settings.dailyGoal);
+  const todayXp = $derived(app.activity[today]?.xp ?? 0);
+  const goalPercent = $derived(goal > 0 ? Math.min(100, Math.round((todayXp / goal) * 100)) : 0);
 
   function continueOn() {
     const course = continueCourse;
@@ -152,8 +157,11 @@
     </div>
 
     {#if courses.length > 0}
+      {#if goal > 0 && todayXp >= goal && app.settings.celebrations}
+        <Celebrate message={t('home.goalReached', { n: goal })} />
+      {/if}
       <section class="cf-card cf-today" aria-labelledby="home-today">
-        <div>
+        <div class="cf-today-text">
           <h2 id="home-today">{t('home.today')}</h2>
           {#if today_.cards.length > 0}
             <p>{today_.cards.length === 1 ? t('review.dueOne') : t('review.dueMany', { n: today_.cards.length })}</p>
@@ -161,6 +169,14 @@
             <p>{t('home.todayNoReviews')}</p>
           {/if}
           {#if continueCourse}<p class="cf-muted cf-small">{t('home.todayContinue', { course: displayTitle(continueCourse) })}</p>{/if}
+          {#if goal > 0}
+            <div class="cf-goal">
+              <span class="cf-progress" role="progressbar" aria-valuenow={Math.min(todayXp, goal)} aria-valuemin="0" aria-valuemax={goal} aria-label={t('home.goal')}>
+                <span style:width={goalPercent + '%'}></span>
+              </span>
+              <span class="cf-small">{t('home.goalProgress', { xp: Math.min(todayXp, goal), goal })}</span>
+            </div>
+          {/if}
         </div>
         <div class="cf-today-actions">
           {#if today_.cards.length > 0}

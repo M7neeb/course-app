@@ -63,6 +63,8 @@
     root.style.setProperty('--base-size', app.settings.fontSize + 'px');
     root.lang = app.settings.uiLanguage;
     root.dataset.reduceMotion = String(app.settings.reduceMotion);
+    root.dataset.readingFont = app.settings.readingFont;
+    root.dataset.lineSpacing = app.settings.lineSpacing;
   });
 
   // Close the drawer and menus whenever the route changes.

@@ -3,12 +3,15 @@
   import { downloadJson } from '../../core/download.ts';
   import { COLOR_THEMES, PALETTES } from '../../core/themes.ts';
   import { backupStatus } from '../../core/backup.ts';
+  import { STUDY_STYLES, currentStudyStyle, type StudyStyle } from '../../core/settings.ts';
   import { CHANGELOG, VERSION } from '../../core/version.ts';
   import type { ExplanationLevel, Settings } from '../../core/types.ts';
   import { t } from '../../i18n/i18n.ts';
 
   const backup = $derived(backupStatus(app.settings.lastBackupAt));
   const trashCount = $derived(Object.keys(app.trash).length);
+  const STYLE_NAMES = Object.keys(STUDY_STYLES) as StudyStyle[];
+  const style = $derived(currentStudyStyle(app.settings));
 
   const backupText = $derived.by(() => {
     if (backup.days === null) return t('backup.last', { when: t('backup.never') });
@@ -58,6 +61,19 @@
       <input type="checkbox" checked={app.settings.reduceMotion} onchange={(e) => updateSettings({ reduceMotion: e.currentTarget.checked })} />
       {t('settings.reduceMotion')}
     </label>
+    <label>{t('settings.readingFont')}
+      <select value={app.settings.readingFont} onchange={(e) => updateSettings({ readingFont: e.currentTarget.value as Settings['readingFont'] })}>
+        <option value="default">{t('settings.readingFont.default')}</option>
+        <option value="hyperlegible">{t('settings.readingFont.hyperlegible')}</option>
+      </select>
+    </label>
+    <label>{t('settings.lineSpacing')}
+      <select value={app.settings.lineSpacing} onchange={(e) => updateSettings({ lineSpacing: e.currentTarget.value as Settings['lineSpacing'] })}>
+        <option value="normal">{t('settings.lineSpacing.normal')}</option>
+        <option value="relaxed">{t('settings.lineSpacing.relaxed')}</option>
+        <option value="loose">{t('settings.lineSpacing.loose')}</option>
+      </select>
+    </label>
     <label>{t('settings.language')}
       <select value={app.settings.uiLanguage} onchange={(e) => updateSettings({ uiLanguage: e.currentTarget.value as Settings['uiLanguage'] })}>
         <option value="en">English</option>
@@ -98,6 +114,25 @@
       </select>
     </label>
     <p class="muted small">{t('settings.gatingHint')}</p>
+  </fieldset>
+
+  <fieldset>
+    <legend>{t('settings.howYouLearn')}</legend>
+    <p class="muted small">{t('settings.learningHint')}</p>
+    <div class="cf-study-styles" role="group" aria-label={t('settings.studyStyle')}>
+      {#each STYLE_NAMES as name (name)}
+        <button type="button" class="theme-choice" aria-pressed={style === name} onclick={() => updateSettings(STUDY_STYLES[name])}>{t('settings.style.' + name)}</button>
+      {/each}
+    </div>
+    <p class="muted small">{style ? t('settings.style.' + style + 'Hint') : t('settings.style.custom')}</p>
+
+    <h3 class="settings-sub">{t('settings.memory')}</h3>
+    <label>{t('settings.retention')}
+      <select value={String(app.settings.desiredRetention)} onchange={(e) => updateSettings({ desiredRetention: Number(e.currentTarget.value) })}>
+        {#each [0.8, 0.85, 0.9, 0.95] as r (r)}<option value={String(r)}>{t('settings.retention.' + Math.round(r * 100))}</option>{/each}
+      </select>
+    </label>
+    <p class="muted small">{t('settings.retentionHint')}</p>
     <label>{t('settings.dailyReviews')}
       <select value={String(app.settings.dailyReviewLimit)} onchange={(e) => updateSettings({ dailyReviewLimit: Number(e.currentTarget.value) })}>
         {#each [10, 20, 30, 50, 100] as n (n)}<option value={String(n)}>{n}</option>{/each}
@@ -105,10 +140,61 @@
     </label>
     <p class="muted small">{t('settings.dailyReviewsHint')}</p>
     <label class="check">
+      <input type="checkbox" checked={app.settings.interleavePractice} onchange={(e) => updateSettings({ interleavePractice: e.currentTarget.checked })} />
+      {t('settings.interleave')}
+    </label>
+    <p class="muted small">{t('settings.interleaveHint')}</p>
+
+    <h3 class="settings-sub">{t('settings.questions')}</h3>
+    <label class="check">
       <input type="checkbox" checked={app.settings.askConfidence} onchange={(e) => updateSettings({ askConfidence: e.currentTarget.checked })} />
       {t('settings.askConfidence')}
     </label>
     <p class="muted small">{t('settings.askConfidenceHint')}</p>
+    <label class="check">
+      <input type="checkbox" checked={app.settings.recallFirst} onchange={(e) => updateSettings({ recallFirst: e.currentTarget.checked })} />
+      {t('settings.recallFirst')}
+    </label>
+    <p class="muted small">{t('settings.recallFirstHint')}</p>
+    <label class="check">
+      <input type="checkbox" checked={app.settings.allowHints} onchange={(e) => updateSettings({ allowHints: e.currentTarget.checked })} />
+      {t('settings.allowHints')}
+    </label>
+    <p class="muted small">{t('settings.allowHintsHint')}</p>
+    <label class="check">
+      <input type="checkbox" checked={app.settings.acceptTypos} onchange={(e) => updateSettings({ acceptTypos: e.currentTarget.checked })} />
+      {t('settings.acceptTypos')}
+    </label>
+
+    <h3 class="settings-sub">{t('settings.lessons')}</h3>
+    <label class="check">
+      <input type="checkbox" checked={app.settings.showWarmups} onchange={(e) => updateSettings({ showWarmups: e.currentTarget.checked })} />
+      {t('settings.showWarmups')}
+    </label>
+    <p class="muted small">{t('settings.showWarmupsHint')}</p>
+    <label class="check">
+      <input type="checkbox" checked={app.settings.showReflect} onchange={(e) => updateSettings({ showReflect: e.currentTarget.checked })} />
+      {t('settings.showReflect')}
+    </label>
+    <p class="muted small">{t('settings.showReflectHint')}</p>
+  </fieldset>
+
+  <fieldset>
+    <legend>{t('settings.motivation')}</legend>
+    <label>{t('settings.dailyGoal')}
+      <select value={String(app.settings.dailyGoal)} onchange={(e) => updateSettings({ dailyGoal: Number(e.currentTarget.value) })}>
+        {#each [0, 30, 50, 100, 200] as n (n)}<option value={String(n)}>{n === 0 ? t('settings.dailyGoalOff') : t('settings.dailyGoalXp', { n })}</option>{/each}
+      </select>
+    </label>
+    <p class="muted small">{t('settings.dailyGoalHint')}</p>
+    <label class="check">
+      <input type="checkbox" checked={app.settings.celebrations} onchange={(e) => updateSettings({ celebrations: e.currentTarget.checked })} />
+      {t('settings.celebrations')}
+    </label>
+    <label class="check">
+      <input type="checkbox" checked={app.settings.sounds} onchange={(e) => updateSettings({ sounds: e.currentTarget.checked })} />
+      {t('settings.sounds')}
+    </label>
   </fieldset>
 
   <fieldset>

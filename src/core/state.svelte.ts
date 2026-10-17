@@ -28,6 +28,7 @@ import type {
   CourseProgress,
   MasteryAttempt,
   MistakeLogEntry,
+  Reflection,
   Route,
   Settings,
   SkillMastery,
@@ -222,6 +223,14 @@ export async function updateProgress(courseId: string, change: (p: CourseProgres
   await storage.saveProgress($state.snapshot(live) as CourseProgress);
 }
 
+/** Saves part of a lesson's or unit's reflection (brain dump, explanation). */
+export function saveReflection(courseId: string, key: string, patch: Partial<Reflection>): Promise<void> {
+  return updateProgress(courseId, (p) => {
+    p.reflections ??= {};
+    p.reflections[key] = { ...(p.reflections[key] ?? {}), ...patch };
+  });
+}
+
 /** Records one correct answer (+10 XP) or one completed lesson (+5 XP) toward today's activity. */
 export async function recordActivity(kind: 'correct' | 'lesson'): Promise<void> {
   const day = dayKey(new Date());
@@ -281,7 +290,8 @@ export function recordMasteryAttempt(courseId: string, attempt: MasteryAttempt, 
     moduleId: skill?.moduleId ?? null,
     given: attempt.given,
     correct: attempt.correct,
-    at: now.toISOString()
+    at: now.toISOString(),
+    ...(attempt.confidence ? { confidence: attempt.confidence } : {})
   };
 
   const record: CourseMastery = {
@@ -295,7 +305,8 @@ export function recordMasteryAttempt(courseId: string, attempt: MasteryAttempt, 
       attempt.questionId,
       skillId,
       { correct: attempt.correct, usedHint: attempt.usedHint, confidence: attempt.confidence },
-      now
+      now,
+      app.settings.desiredRetention
     ),
     mistakes: [...current.mistakes, entry].slice(-MASTERY.mistakeLogLimit),
     updatedAt: now.toISOString()

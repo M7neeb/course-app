@@ -26,7 +26,18 @@ export const SRS: SrsConfig = {
 };
 
 // Day-sized steps only: lessons are not drilled again minutes later, they come back on later days.
-const scheduler = fsrs(generatorParameters({ request_retention: SRS.retention, enable_short_term: false, enable_fuzz: false }));
+// One scheduler per target retention (the learner can choose how much to remember).
+const schedulers = new Map<number, ReturnType<typeof fsrs>>();
+function schedulerFor(retention: number = SRS.retention) {
+  const target = Math.min(0.97, Math.max(0.7, retention));
+  let found = schedulers.get(target);
+  if (!found) {
+    found = fsrs(generatorParameters({ request_retention: target, enable_short_term: false, enable_fuzz: false }));
+    schedulers.set(target, found);
+  }
+  return found;
+}
+const scheduler = schedulerFor();
 
 /**
  * How an answer translates into a scheduler grade. Wrong is "Again". A right answer after a hint,
@@ -89,7 +100,8 @@ export function scheduleCard(
   questionId: string,
   skillId: string,
   answer: { correct: boolean; usedHint: boolean; confidence?: Confidence },
-  now: Date = new Date()
+  now: Date = new Date(),
+  retention: number = SRS.retention
 ): ReviewCard {
   const rating = ratingFor(answer.correct, answer.usedHint, answer.confidence);
   // One answer a day is what counts. A retry later the same day (the quiz lets you try again until
@@ -101,7 +113,7 @@ export function scheduleCard(
       return answer.correct ? previous : { ...previous, confidentMiss: previous.confidentMiss || answer.confidence === 'sure' || undefined };
     }
   }
-  const next = scheduler.next(toCard(previous, now), now, rating).card;
+  const next = schedulerFor(retention).next(toCard(previous, now), now, rating).card;
   // A mistake the learner was sure about is the most useful one to fix, so it is flagged until
   // the question is answered right again.
   const confidentMiss = !answer.correct && answer.confidence === 'sure' ? true : !answer.correct && previous?.confidentMiss === true;
@@ -114,9 +126,10 @@ export function applyCard(
   questionId: string,
   skillId: string,
   answer: { correct: boolean; usedHint: boolean; confidence?: Confidence },
-  now: Date = new Date()
+  now: Date = new Date(),
+  retention: number = SRS.retention
 ): Record<string, ReviewCard> {
-  return { ...(cards ?? {}), [questionId]: scheduleCard(cards?.[questionId], questionId, skillId, answer, now) };
+  return { ...(cards ?? {}), [questionId]: scheduleCard(cards?.[questionId], questionId, skillId, answer, now, retention) };
 }
 
 /** Chance (0-1) that the question is still remembered right now. */

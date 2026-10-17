@@ -6,6 +6,7 @@
   import { courseAccent, entryModuleId } from '../../core/home.ts';
   import { skillPoints, tierForPoints } from '../../core/mastery.ts';
   import type { Course } from '../../core/types.ts';
+  import { calibration } from '../../core/calibration.ts';
   import MasteryIcon from '../../ui/MasteryIcon.svelte';
   import MasteryLegend from '../../ui/MasteryLegend.svelte';
   import { t } from '../../i18n/i18n.ts';
@@ -85,6 +86,7 @@
     const course = app.courses.find((c) => c.id === id);
     return course ? titleOf(course) : id;
   }
+  const calib = $derived(calibration(Object.values(app.mastery)));
 </script>
 
 {#snippet tierBar(summary: MasterySummary, label: string)}
@@ -218,6 +220,23 @@
         {/each}
       </ul>
     {/if}
+  </section>
+
+  <section class="cf-prog-section">
+    <h2>{t('stats.calibration')}</h2>
+    <p class="cf-muted cf-small">{t('stats.calibrationHint')}</p>
+    <ul class="cf-calibration">
+      {#each calib.rows as row (row.confidence)}
+        <li>
+          <span class="cf-calib-label">{t('quiz.confidence.' + row.confidence)}</span>
+          <span class="cf-progress cf-calib-bar" role="progressbar" aria-valuenow={row.percent ?? 0} aria-valuemin="0" aria-valuemax="100" aria-label={t('quiz.confidence.' + row.confidence)}>
+            <span style:width={(row.percent ?? 0) + '%'}></span>
+          </span>
+          <span class="cf-small">{row.percent === null ? t('stats.calibrationNone') : t('stats.calibrationRight', { percent: row.percent, n: row.answers })}</span>
+        </li>
+      {/each}
+    </ul>
+    <p class="cf-small">{t('stats.calibration.' + calib.advice)}</p>
   </section>
 
   <section class="cf-prog-section">

@@ -1,7 +1,7 @@
 // The single source of truth for the app version and the "What's new" list.
 // Bump VERSION and add one CHANGELOG entry at the top when you ship user-visible changes.
 
-export const VERSION = '1.1.0';
+export const VERSION = '1.2.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -11,6 +11,22 @@ export interface ChangelogEntry {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.2.0',
+    date: '2026-10-17',
+    changes: [
+      'Settings has a new "How you learn" section: pick Balanced, Exam prep, Deep understanding or Relaxed, or set every option yourself.',
+      'Choose how much to remember (80-95%): the review schedule adapts.',
+      'Brain dump after every lesson and unit: write what you remember, see which key points you covered, and fill the gaps.',
+      'Explain it simply (the Feynman technique): explain a lesson in plain words, spot jargon, and let an AI ask you follow-up questions.',
+      'Recall first: multiple choice can hide the options until you have thought of the answer.',
+      'Practice sets mix in questions from earlier lessons.',
+      'Small typos in typed answers can be forgiven, and hints can be switched off for exam practice.',
+      'A daily goal, an "in a row" counter, a celebration when a skill levels up, and optional soft sounds.',
+      'Progress shows how well your confidence matches your results.',
+      'Reading options: an easier-to-read font and wider line spacing.'
+    ]
+  },
   {
     version: '1.1.0',
     date: '2026-10-17',

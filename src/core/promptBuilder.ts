@@ -37,6 +37,8 @@ export interface Extras {
   warmup: boolean;
   /** A "Read more" note with 1-2 real references at the end of every lesson. */
   reading: boolean;
+  /** One quick check-in question in the middle of longer lessons. */
+  checkins: boolean;
 }
 
 export interface PromptSettings {
@@ -152,7 +154,8 @@ export function defaultSettings(): PromptSettings {
       videos: false,
       code: false,
       warmup: true,
-      reading: true
+      reading: true,
+      checkins: true
     },
     tone: '',
     extraInstructions: '',
@@ -446,7 +449,10 @@ function lessonRecipe(s: PromptSettings): string {
     e.examples
       ? 'Add one "example" block: a fully worked example with numbered steps and the reasoning for each step, not just the result. Then hand the work over step by step: the first quiz questions of the lesson give a similar problem with the first steps already done, so the learner only finishes it, and later questions ask for the whole solution.'
       : '',
-    '"callout" block with style "keypoint": the 1-3 things to remember from this lesson.',
+    '"callout" block with style "keypoint": the 2-4 things to remember from this lesson, each as its own "- " bullet in one short sentence. The app turns these bullets into the checklist for the learner\'s brain dump, so each bullet must be a complete, checkable idea.',
+    e.checkins
+      ? 'In lessons longer than a few paragraphs, split the explanation into two "text" blocks and put a "quiz" block with ONE quick check-in question between them, so the learner recalls the first half before reading on.'
+      : '',
     e.mistakes ? '"callout" block with style "warning": the most common mistake or misconception, why people make it, and how to avoid it.' : '',
     e.examTips ? '"callout" block with style "tip": how this shows up in exams and what examiners look for.' : '',
     e.images ? '"image" block where a diagram genuinely helps, with "url": null and a precise "searchTerm" (never invent an image URL).' : '',
@@ -456,7 +462,7 @@ function lessonRecipe(s: PromptSettings): string {
     e.flashcards ? '"flashcards" block with 3-6 cards for the key terms and facts (not copies of quiz questions).' : '',
     e.summaries ? '"callout" block with style "note": a 2-4 line summary of the lesson.' : '',
     e.reading
-      ? '"callout" block with style "note" and title "Read more": 1-2 real references for this lesson (a textbook chapter, official documentation or a Wikipedia article) so the learner can double-check. Only list sources you are certain exist; give the exact title and, for websites, the full link.'
+      ? '"callout" block with style "note" whose markdown starts with "**Read more**": 1-2 real references for this lesson (a textbook chapter, official documentation or a Wikipedia article) so the learner can double-check. Only list sources you are certain exist; give the exact title and, for websites, the full link.'
       : '',
     `Finish with one "quiz" block of ${s.questionsPerLesson} questions.`
   ];

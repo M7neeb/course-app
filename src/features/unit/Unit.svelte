@@ -4,12 +4,14 @@
   // (plus the star for the unit test), an "About this unit" card and one card per lesson with its
   // Learn and Practice rows. Gating is decided by the shared `gateForItem`, so 'free' mode never
   // locks anything while still showing the recommendation.
-  import { app, displayTitle, getCourse, moduleMasteryPercentFor, navigate } from '../../core/state.svelte.ts';
+  import { app, displayTitle, getCourse, moduleMasteryPercentFor, navigate, saveReflection } from '../../core/state.svelte.ts';
   import { flattenCourse, lessonKind, testItemId, type FlatItem, type LessonKind } from '../../core/course-utils.ts';
   import { gateForItem, openGate, weakestSkillInModule, type Gate } from '../../core/gating.ts';
   import { MASTERY, courseSkills, itemForSkill, moduleMasteryPool, questionsToLevelUp, skillPoints, skillTitle, tierForPoints } from '../../core/mastery.ts';
   import { courseAccent } from '../../core/home.ts';
   import { isFading } from '../../core/srs.ts';
+  import { lessonDigest, unitKeyPoints } from '../../core/reflect.ts';
+  import ReflectCard from '../../ui/ReflectCard.svelte';
   import type { Lesson, MasteryTier } from '../../core/types.ts';
   import MasteryIcon from '../../ui/MasteryIcon.svelte';
   import MasteryLegend from '../../ui/MasteryLegend.svelte';
@@ -244,6 +246,21 @@
             <button type="button" class="cf-btn cf-btn-primary" onclick={() => testItem && openItem(testItem.id)}>{t('unit.testCta')}</button>
           {/if}
         </section>
+      {/if}
+
+      {#if app.settings.showReflect && mod.lessons.some((l) => l.blocks.length > 0)}
+        {@const lang = app.settings.explanationLanguage}
+        {#key mod.id}
+          <ReflectCard
+            scope="unit"
+            topic={mod.title}
+            points={unitKeyPoints(mod, lang)}
+            source={mod.lessons.map((l) => `# ${l.title}\n${lessonDigest(l, lang, 2500)}`).join('\n\n').slice(0, 9000)}
+            {lang}
+            reflection={app.progress[courseId]?.reflections?.['unit:' + mod.id]}
+            onSave={(patch) => saveReflection(courseId, 'unit:' + mod.id, patch)}
+          />
+        {/key}
       {/if}
 
       <section class="cf-card cf-test-card cf-challenge-card">

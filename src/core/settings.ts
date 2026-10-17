@@ -22,8 +22,42 @@ export function defaultSettings(): Settings {
     username: '',
     bio: '',
     dailyReviewLimit: 20,
-    askConfidence: true
+    askConfidence: true,
+    desiredRetention: 0.9,
+    recallFirst: false,
+    showWarmups: true,
+    showReflect: true,
+    allowHints: true,
+    acceptTypos: true,
+    interleavePractice: true,
+    celebrations: true,
+    sounds: false,
+    dailyGoal: 50,
+    readingFont: 'default',
+    lineSpacing: 'normal'
   };
+}
+
+/** Ready-made study styles: one click sets the learning options together. */
+export type StudyStyle = 'balanced' | 'exam' | 'deep' | 'relaxed';
+
+export const STUDY_STYLES: Record<StudyStyle, Partial<Settings>> = {
+  // What the research supports for most learners.
+  balanced: { desiredRetention: 0.9, dailyReviewLimit: 20, askConfidence: true, recallFirst: false, showWarmups: true, showReflect: true, allowHints: true, interleavePractice: true },
+  // Remember as much as possible before an exam: more reviews, harder recall, no hints.
+  exam: { desiredRetention: 0.95, dailyReviewLimit: 50, askConfidence: true, recallFirst: true, showWarmups: true, showReflect: true, allowHints: false, interleavePractice: true },
+  // Understanding first: explain and brain-dump everything, mix topics.
+  deep: { desiredRetention: 0.9, dailyReviewLimit: 30, askConfidence: true, recallFirst: true, showWarmups: true, showReflect: true, allowHints: true, interleavePractice: true },
+  // Light and low-pressure: fewer reviews, fewer extra steps.
+  relaxed: { desiredRetention: 0.85, dailyReviewLimit: 10, askConfidence: false, recallFirst: false, showWarmups: false, showReflect: false, allowHints: true, interleavePractice: false }
+};
+
+/** The study style the current settings match exactly, if any. */
+export function currentStudyStyle(settings: Settings): StudyStyle | null {
+  for (const [name, patch] of Object.entries(STUDY_STYLES) as [StudyStyle, Partial<Settings>][]) {
+    if ((Object.keys(patch) as (keyof Settings)[]).every((key) => settings[key] === patch[key])) return name;
+  }
+  return null;
 }
 
 /** Old saved settings may lack newer keys; every key falls back to its default. */
@@ -57,5 +91,14 @@ export function mergeSettings(saved: unknown): Settings {
     out.dailyReviewLimit = Math.min(100, Math.max(5, Math.round(s.dailyReviewLimit)));
   }
   if (typeof s.askConfidence === 'boolean') out.askConfidence = s.askConfidence;
+  if (typeof s.desiredRetention === 'number' && Number.isFinite(s.desiredRetention)) {
+    out.desiredRetention = Math.min(0.95, Math.max(0.8, Math.round(s.desiredRetention * 100) / 100));
+  }
+  for (const key of ['recallFirst', 'showWarmups', 'showReflect', 'allowHints', 'acceptTypos', 'interleavePractice', 'celebrations', 'sounds'] as const) {
+    if (typeof s[key] === 'boolean') out[key] = s[key] as boolean;
+  }
+  if (typeof s.dailyGoal === 'number' && [0, 30, 50, 100, 200].includes(s.dailyGoal)) out.dailyGoal = s.dailyGoal;
+  if (s.readingFont === 'default' || s.readingFont === 'hyperlegible') out.readingFont = s.readingFont;
+  if (s.lineSpacing === 'normal' || s.lineSpacing === 'relaxed' || s.lineSpacing === 'loose') out.lineSpacing = s.lineSpacing;
   return out;
 }

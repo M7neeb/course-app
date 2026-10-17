@@ -221,6 +221,8 @@ export interface MistakeLogEntry {
   given: unknown;
   correct: boolean;
   at: string;
+  /** How sure the learner said they were. Optional: older entries have none. */
+  confidence?: Confidence;
 }
 
 /** All mastery a course holds. Stored in the `mastery` IndexedDB store, keyed by courseId. */
@@ -265,7 +267,23 @@ export interface CourseProgress {
   questionNotes?: Record<string, string>;
   /** Saved lesson, test, and exam item ids. */
   bookmarks?: string[];
+  /** Brain dumps and "explain it simply" texts, keyed by lesson id or "unit:<moduleId>". */
+  reflections?: Record<string, Reflection>;
   lastOpened: string;
+}
+
+/** What the learner wrote when reflecting on a lesson or unit. */
+export interface Reflection {
+  /** Brain dump: everything remembered, written from memory. */
+  dump?: string;
+  dumpAt?: string;
+  /** Indexes of the key points the learner marked as covered by the dump. */
+  covered?: number[];
+  /** Key points in the lesson at the time of the dump, so the score stays meaningful. */
+  total?: number;
+  /** "Explain it simply" (Feynman) text. */
+  explain?: string;
+  explainAt?: string;
 }
 
 export interface CourseMeta {
@@ -307,6 +325,30 @@ export interface Settings {
   dailyReviewLimit: number;
   /** Show the "How sure are you?" buttons before checking an answer. */
   askConfidence: boolean;
+  /** Share of questions the scheduler aims to keep remembered (0.8-0.95): higher means more reviews. */
+  desiredRetention: number;
+  /** Multiple choice: recall the answer in your head (or type it) before the options appear. */
+  recallFirst: boolean;
+  /** Show the guess-first warm-up questions at the start of lessons. */
+  showWarmups: boolean;
+  /** Show the brain dump and "explain it simply" card at the end of lessons and units. */
+  showReflect: boolean;
+  /** Offer hints and the full solution in quizzes. */
+  allowHints: boolean;
+  /** Accept one small typo in typed answers (words of 5 letters or more). */
+  acceptTypos: boolean;
+  /** Mix a few questions from earlier lessons into practice sets. */
+  interleavePractice: boolean;
+  /** Celebrate meaningful moments: a new mastery level, the daily goal, a finished unit. */
+  celebrations: boolean;
+  /** Soft sounds for right and wrong answers. */
+  sounds: boolean;
+  /** Daily goal in energy points (XP); 0 turns it off. */
+  dailyGoal: number;
+  /** Reading font: the app font, or Atkinson Hyperlegible (designed for easy reading). */
+  readingFont: 'default' | 'hyperlegible';
+  /** Line spacing for lesson text. */
+  lineSpacing: 'normal' | 'relaxed' | 'loose';
 }
 
 /** A deleted course kept in the trash until it is restored or purged. */
@@ -353,6 +395,18 @@ export interface BlockContext {
   autoplayVideo: boolean;
   /** Show the "How sure are you?" buttons before checking. */
   askConfidence?: boolean;
+  /** Multiple choice: think of the answer before the options appear. */
+  recallFirst?: boolean;
+  /** Offer hints and the full solution (default true). */
+  allowHints?: boolean;
+  /** Forgive one small typo in typed answers. */
+  acceptTypos?: boolean;
+  /** Show guess-first warm-up quizzes (default true). */
+  showWarmups?: boolean;
+  /** Play soft sounds for right and wrong answers. */
+  sounds?: boolean;
+  /** Celebrate a new mastery level at the end of a set. */
+  celebrations?: boolean;
   /** The course's display title, used in copy-to-AI prompts. */
   courseTitle?: string;
   getAnswer(questionId: string): AnswerRecord | undefined;

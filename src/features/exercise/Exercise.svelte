@@ -5,7 +5,8 @@
   import { untrack } from 'svelte';
   import { app, displayTitle, getCourse, navigate } from '../../core/state.svelte.ts';
   import { studyContext } from '../../core/studyContext.ts';
-  import { buildExerciseSet, type ExerciseSet } from '../../core/exercise.ts';
+  import { buildExerciseSet, interleaveExtras, mixIntoSet, type ExerciseSet } from '../../core/exercise.ts';
+  import { retrievability } from '../../core/srs.ts';
   import { courseSkills, skillPoints, skillTitle, tierForPoints } from '../../core/mastery.ts';
   import { FINAL_EXAM_ITEM_ID } from '../../core/course-utils.ts';
   import { getBlockRenderer } from '../../blocks/registry.ts';
@@ -31,7 +32,23 @@
     const s = skill;
     const currentSeed = seed;
     if (!c || !s) return null;
-    return untrack(() => buildExerciseSet(c, skillId, currentSeed, { mastery: app.mastery[courseId], now: new Date() }));
+    return untrack(() => {
+      const now = new Date();
+      const mastery = app.mastery[courseId];
+      const base = buildExerciseSet(c, skillId, currentSeed, { mastery, now });
+      if (!app.settings.interleavePractice || base.questions.length < 4) return base;
+      // Mix in up to two questions from earlier lessons (interleaving).
+      const cards = mastery?.cards ?? {};
+      const extras = interleaveExtras(c, skillId, {
+        mastery,
+        now,
+        count: 2,
+        retrievabilityOf: (qid) => (cards[qid] ? retrievability(cards[qid], now) : 1)
+      });
+      const questions = mixIntoSet(base.questions, extras);
+      const reasons = questions.map((q, i) => (extras.some((e) => e.id === q.id) ? ('mixed' as const) : (base.reasons[base.questions.indexOf(q)] ?? base.reasons[i] ?? 'seen')));
+      return { ...base, questions, reasons, mixed: extras.length };
+    });
   });
 
   const block = $derived.by((): Block | undefined => {
@@ -112,6 +129,7 @@
       {@const Renderer = getBlockRenderer('quiz')}
       <p class="cf-muted cf-exercise-intro">{t('exercise.intro')} {t('exercise.setOf', { n: set?.questions.length ?? 0 })}</p>
       {#if set?.repeats}<p class="cf-muted cf-small">{t('exercise.repeats')}</p>{/if}
+      {#if set?.mixed}<p class="cf-muted cf-small">{t('exercise.mixed', { n: set.mixed })}</p>{/if}
 
       {#key `${skillId}:${seed}`}
         {#if Renderer}

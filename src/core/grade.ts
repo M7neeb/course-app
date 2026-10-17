@@ -129,3 +129,45 @@ export function gradeAnswer(q: Question, given: unknown): boolean {
       return false;
   }
 }
+
+/** Edit distance with adjacent swaps (Damerau-Levenshtein, optimal string alignment). */
+export function editDistance(a: string, b: string): number {
+  const rows = a.length + 1;
+  const cols = b.length + 1;
+  const d: number[][] = Array.from({ length: rows }, (_, i) => Array.from({ length: cols }, (_, j) => (i === 0 ? j : j === 0 ? i : 0)));
+  for (let i = 1; i < rows; i += 1) {
+    for (let j = 1; j < cols; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      let best = Math.min((d[i - 1]?.[j] ?? 0) + 1, (d[i]?.[j - 1] ?? 0) + 1, (d[i - 1]?.[j - 1] ?? 0) + cost);
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) best = Math.min(best, (d[i - 2]?.[j - 2] ?? 0) + 1);
+      (d[i] as number[])[j] = best;
+    }
+  }
+  return d[rows - 1]?.[cols - 1] ?? 0;
+}
+
+export interface GradeResult {
+  correct: boolean;
+  /** Set when the answer only counted because a small typo was forgiven: the accepted spelling. */
+  typoOf?: string;
+}
+
+/**
+ * Grades an answer, optionally forgiving one small typo in a typed answer (two in long ones).
+ * Short words are never forgiven, so "cat" never counts for "car". Numbers are never fuzzy.
+ */
+export function gradeWithTypos(q: Question, given: unknown, acceptTypos: boolean): GradeResult {
+  if (gradeAnswer(q, given)) return { correct: true };
+  if (!acceptTypos || (q.kind !== 'short-answer' && q.kind !== 'fill-blank') || typeof given !== 'string') return { correct: false };
+  const g = normalizeText(given);
+  if (g === '' || /^\d/.test(g)) return { correct: false };
+  const accepted = Array.isArray(q.answer) ? q.answer : [q.answer];
+  for (const a of accepted) {
+    if (typeof a !== 'string') continue;
+    const target = normalizeText(a);
+    if (target.length < 5 || /\d/.test(target)) continue;
+    const allowed = target.length >= 12 ? 2 : 1;
+    if (editDistance(g, target) <= allowed) return { correct: true, typoOf: a };
+  }
+  return { correct: false };
+}

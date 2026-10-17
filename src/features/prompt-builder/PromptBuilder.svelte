@@ -53,7 +53,7 @@
   const STEPS = ['goal', 'material', 'languages', 'structure', 'practice', 'extras'] as const;
   type Step = (typeof STEPS)[number];
   const PRESET_LIST: Preset[] = ['exam', 'programming', 'understand', 'refresher', 'deep-dive', 'custom'];
-  const EXTRA_KEYS: (keyof Extras)[] = ['examples', 'analogies', 'mistakes', 'examTips', 'summaries', 'flashcards', 'images', 'videos', 'code', 'warmup', 'reading'];
+  const EXTRA_KEYS: (keyof Extras)[] = ['examples', 'analogies', 'mistakes', 'examTips', 'summaries', 'flashcards', 'images', 'videos', 'code', 'warmup', 'reading', 'checkins'];
 
   let mode = $state<Mode>('new');
   let step = $state<Step>('goal');

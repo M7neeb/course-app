@@ -1,10 +1,12 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import type { AnswerRecord, Block, BlockContext, Confidence, Question } from '../../core/types.ts';
-  import { gradeAnswer, multiSelectOutcome } from '../../core/grade.ts';
+  import { gradeWithTypos, multiSelectOutcome } from '../../core/grade.ts';
   import { renderMarkdown } from '../../core/markdown.ts';
   import { rationaleFor, resolveQuestions } from '../../core/localize.ts';
-  import { tierForPoints } from '../../core/mastery.ts';
+  import { TIER_ORDER, tierForPoints } from '../../core/mastery.ts';
+  import { playCelebrate, playCorrect, playWrong } from '../../ui/sound.ts';
+  import Celebrate from '../../ui/Celebrate.svelte';
   import { tutorPrompt } from '../../core/promptBuilder.ts';
   import { copyText } from '../../ui/clipboard.ts';
   import { t } from '../../i18n/i18n.ts';
@@ -25,6 +27,18 @@
   let confidence = $state<Record<string, Confidence>>({});
   let tutorCopied = $state<string | null>(null);
   const CONFIDENCE: Confidence[] = ['sure', 'unsure', 'guess'];
+  // Recall first: multiple-choice options stay hidden until the learner has thought of an answer.
+  let revealed = $state<Record<string, boolean>>({});
+  let recalled = $state<Record<string, string>>({});
+  // A forgiven typo, keyed by question: the accepted spelling to show.
+  let typoOf = $state<Record<string, string>>({});
+  // Right answers in a row on the first try, for the small "in a row" counter.
+  let inARow = $state(0);
+  const hidden = $derived(pretest && ctx.showWarmups === false);
+  const hintsAllowed = $derived(ctx.allowHints !== false);
+  function needsRecall(q: Question): boolean {
+    return ctx.recallFirst === true && !pretest && (q.kind === 'multiple-choice' || q.kind === 'multi-select') && revealed[q.id] !== true;
+  }
 
   // One question at a time. `drillIds` narrows the run to just the mistakes after a set is done.
   let drillIds = $state<string[] | null>(null);
@@ -92,6 +106,20 @@
     }))
   );
   const modulePercent = $derived(ctx.moduleId ? ctx.getModuleMasteryPercent(ctx.moduleId) : 0);
+  // Skills that reached a new level of Familiar or higher in this set: worth celebrating.
+  const levelUps = $derived(
+    deltas.filter((d) => {
+      const after = TIER_ORDER.indexOf(tierForPoints(d.after));
+      return after > TIER_ORDER.indexOf(tierForPoints(d.before)) && after >= TIER_ORDER.indexOf('familiar');
+    })
+  );
+  let celebrated = false;
+  $effect(() => {
+    if (finished && !pretest && levelUps.length > 0 && !celebrated) {
+      celebrated = true;
+      if (ctx.sounds && ctx.celebrations !== false) untrack(() => playCelebrate());
+    }
+  });
   const mistakeList = $derived(
     misses
       .map((m) => ({ question: active.find((q) => q.id === m.questionId), given: m.given }))
@@ -251,7 +279,9 @@
   /** Grades the current draft. A wrong answer never advances: it stays open for another try. */
   function check(q: Question) {
     const given = draftOf(q);
-    const correct = gradeAnswer(q, given);
+    const result = gradeWithTypos(q, given, ctx.acceptTypos === true);
+    const correct = result.correct;
+    if (result.typoOf) typoOf[q.id] = result.typoOf;
     const previous = answerOf(q.id);
     const usedHint = hinted[q.id] === true;
     // First try means: correct, no hint, and no earlier wrong attempt on this question.
@@ -268,6 +298,8 @@
       localAnswers[q.id] = record;
       return;
     }
+    if (ctx.sounds) (correct ? playCorrect : playWrong)();
+    inARow = firstTry ? inARow + 1 : correct ? inARow : 0;
     ctx.recordAnswer(q.id, record);
     ctx.recordMasteryAttempt({ questionId: q.id, correct, usedHint, given, confidence: confidence[q.id] });
 
@@ -310,13 +342,19 @@
 </script>
 
 <section class="block quiz" {lang}>
-  {#if finished && pretest}
+  {#if hidden}
+    <!-- Warm-ups are switched off in Settings. -->
+  {:else if finished && pretest}
     <div class="quiz-results warmup-done" role="status">
       <p class="results-kicker">{t('quiz.warmup')}</p>
       <p>{t('quiz.warmupDone')}</p>
     </div>
   {:else if finished}
     <div class="quiz-results" role="region" aria-label={t('results.title')}>
+      {#if ctx.celebrations !== false && levelUps.length > 0}
+        {@const top = levelUps[0]}
+        <Celebrate message={levelUps.length === 1 && top ? t('results.levelUp', { skill: top.title, tier: t('mastery.tier.' + tierForPoints(top.after)) }) : t('results.levelUps', { n: levelUps.length })} />
+      {/if}
       <p class="results-kicker">{t('results.title')}</p>
       <p class="results-score">{t('results.firstTry', { correct: solvedFirstTry, total: active.length })}</p>
       <p class="results-accuracy muted">{t('results.accuracy', { percent: accuracy })}</p>
@@ -382,6 +420,7 @@
     {/if}
     <p class="quiz-progress muted small">
       {t('quiz.questionOf', { current: index + 1, total: active.length })}
+      {#if inARow >= 3}<span class="in-a-row">{t('quiz.inARow', { n: inARow })}</span>{/if}
       <span class="quiz-running-score">
         {t('quiz.score', { correct: active.filter((q) => answerOf(q.id)?.correct).length, total: active.length })}
       </span>
@@ -404,7 +443,14 @@
           {/if}
         {/if}
 
-        {#if current.kind === 'multiple-choice'}
+        {#if needsRecall(current)}
+          <div class="recall-first">
+            <p class="muted small">{t('quiz.recallFirst')}</p>
+            <label class="sr-only" for={'r-' + current.id}>{t('quiz.recallLabel')}</label>
+            <textarea id={'r-' + current.id} rows="2" placeholder={t('quiz.recallPlaceholder')} bind:value={recalled[current.id]}></textarea>
+            <button type="button" class="btn primary" onclick={() => (revealed[current.id] = true)}>{t('quiz.showOptions')}</button>
+          </div>
+        {:else if current.kind === 'multiple-choice'}
           <div class="options" role="radiogroup" aria-label={current.prompt}>
             {#each current.options ?? [] as option, oi (oi)}
               <button
@@ -508,7 +554,7 @@
           />
         {/if}
 
-        {#if ctx.askConfidence && !pretest}
+        {#if ctx.askConfidence && !pretest && !needsRecall(current)}
           <div class="confidence" role="radiogroup" aria-label={t('quiz.howSure')}>
             <span class="confidence-label muted small">{t('quiz.howSure')}</span>
             {#each CONFIDENCE as level (level)}
@@ -529,7 +575,7 @@
             {#each shownHints as hint, hi (hi)}<li class="hint">{hint}</li>{/each}
           </ol>
         {/if}
-        {#if !pretest}
+        {#if !pretest && hintsAllowed && !needsRecall(current)}
           {#if solutionShown}
             <p class="hint full-solution">{t('quiz.correctAnswer', { answer: answerText(current) })}</p>
           {:else}
@@ -552,6 +598,8 @@
             <p class="verdict guess">{t('quiz.guessWrong')}</p>
           {/if}
           <p class="given">{t('quiz.yourAnswer')}: {givenText(current, currentRecord.given)}</p>
+          {#if typoOf[current.id]}<p class="typo-note">{t('quiz.typo', { answer: typoOf[current.id] ?? '' })}</p>{/if}
+          {#if recalled[current.id]?.trim()}<p class="given muted">{t('quiz.youRecalled', { text: recalled[current.id]?.trim() ?? '' })}</p>{/if}
           {#if !currentRecord.correct}<p class="given">{t('quiz.correctAnswer', { answer: answerText(current) })}</p>{/if}
           {#if current.explanation}<p class="explanation">{current.explanation}</p>{/if}
           <div class="row">

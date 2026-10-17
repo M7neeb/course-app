@@ -6,6 +6,11 @@ import '@fontsource/lato/latin-700.css';
 import '@fontsource/lato/latin-900.css';
 import '@fontsource/lato/latin-ext-400.css';
 import '@fontsource/lato/latin-ext-700.css';
+// Optional reading font (Settings > Reading). Browsers only download it when it is switched on.
+import '@fontsource/atkinson-hyperlegible/latin-400.css';
+import '@fontsource/atkinson-hyperlegible/latin-700.css';
+import '@fontsource/atkinson-hyperlegible/latin-ext-400.css';
+import '@fontsource/atkinson-hyperlegible/latin-ext-700.css';
 import './app.css';
 import './styles/theme.css';
 import './blocks/index.ts';

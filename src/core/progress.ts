@@ -36,6 +36,13 @@ export function normalizeProgress(raw: unknown): CourseProgress | null {
       Object.entries(r.questionNotes).filter((entry): entry is [string, string] => typeof entry[1] === 'string')
     );
   }
+  if (typeof r.reflections === 'object' && r.reflections !== null && !Array.isArray(r.reflections)) {
+    p.reflections = Object.fromEntries(
+      Object.entries(r.reflections).filter(
+        (entry): entry is [string, NonNullable<CourseProgress['reflections']>[string]] => typeof entry[1] === 'object' && entry[1] !== null
+      )
+    );
+  }
   if (Array.isArray(r.bookmarks)) p.bookmarks = [...new Set(r.bookmarks.filter((x): x is string => typeof x === 'string'))];
   if (typeof r.lastOpened === 'string') p.lastOpened = r.lastOpened;
   const pos = r.position as { lessonId?: unknown } | undefined;

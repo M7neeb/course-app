@@ -44,6 +44,12 @@ export function studyContext(courseId: string, item: StudyItem, options: StudyOp
     questionLanguage: app.settings.questionLanguage,
     autoplayVideo: app.settings.autoplayVideo,
     askConfidence: app.settings.askConfidence,
+    recallFirst: app.settings.recallFirst,
+    allowHints: app.settings.allowHints,
+    acceptTypos: app.settings.acceptTypos,
+    showWarmups: app.settings.showWarmups,
+    sounds: app.settings.sounds,
+    celebrations: app.settings.celebrations,
     courseTitle: course ? displayTitle(course) : courseId,
     getAnswer: (qid) => app.progress[courseId]?.answers[qid],
     recordAnswer: (qid, record) => {

@@ -34,7 +34,7 @@ export const EXERCISE: ExerciseConfig = {
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** Why a question ended up in a set. `repeat` only appears when the pool is smaller than the set. */
-export type ExerciseReason = 'review' | 'variant' | 'new' | 'seen' | 'repeat';
+export type ExerciseReason = 'review' | 'variant' | 'new' | 'seen' | 'repeat' | 'mixed';
 
 export interface ExerciseSet {
   skillId: string;
@@ -46,6 +46,8 @@ export interface ExerciseSet {
   poolSize: number;
   /** True when the pool was smaller than the requested size, so some questions repeat. */
   repeats: boolean;
+  /** How many questions from earlier lessons were mixed in. */
+  mixed?: number;
 }
 
 export interface ExerciseOptions {
@@ -264,4 +266,49 @@ export function buildChallengeSet(
     }
   }
   return shuffled(mixed, random).slice(0, maxSize);
+}
+
+// ---------- interleaving ----------
+
+/**
+ * Questions from EARLIER lessons to mix into a practice set, so practice is not one topic at a
+ * time (mixed practice makes you choose the method yourself, which sticks better). Only questions
+ * the learner has already answered are used - never something not taught yet. Due cards first,
+ * then the ones most likely to be forgotten.
+ */
+export function interleaveExtras(
+  course: Course,
+  skillId: string,
+  options: { mastery?: CourseMastery; now?: Date; count?: number; retrievabilityOf?: (questionId: string) => number } = {}
+): Question[] {
+  const count = Math.max(0, Math.floor(options.count ?? 2));
+  if (count === 0) return [];
+  const skills = courseSkills(course).filter((s) => s.lessonId !== null && s.questionIds.length > 0);
+  const position = skills.findIndex((s) => s.id === skillId);
+  if (position <= 0) return [];
+  const earlier = new Set(skills.slice(0, position).flatMap((s) => s.questionIds));
+  const cards = options.mastery?.cards ?? {};
+  const now = options.now ?? new Date();
+  const index = indexQuestions(course);
+  const answered = [...earlier].filter((id) => cards[id] !== undefined && index.has(id));
+  const strength = options.retrievabilityOf ?? (() => 1);
+  answered.sort((a, b) => {
+    const dueA = isCardDue(cards[a], now) ? 0 : 1;
+    const dueB = isCardDue(cards[b], now) ? 0 : 1;
+    return dueA - dueB || strength(a) - strength(b) || a.localeCompare(b);
+  });
+  return answered.slice(0, count).map((id) => index.get(id)!.question);
+}
+
+/** Puts extra questions into a set at spread-out positions, keeping the set's size. */
+export function mixIntoSet(questions: Question[], extras: Question[]): Question[] {
+  const unique = extras.filter((q) => !questions.some((existing) => existing.id === q.id));
+  if (unique.length === 0) return questions;
+  const base = questions.slice(0, Math.max(1, questions.length - unique.length));
+  const out = [...base];
+  unique.forEach((question, i) => {
+    const at = Math.min(out.length, Math.round(((i + 1) * (out.length + 1)) / (unique.length + 1)));
+    out.splice(at, 0, question);
+  });
+  return out;
 }

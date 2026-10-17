@@ -6,6 +6,7 @@
     getCourse,
     navigate,
     recordActivity,
+    saveReflection,
     updateProgress,
     updateSettings
   } from '../../core/state.svelte.ts';
@@ -14,6 +15,8 @@
   import { gateForItem, openGate } from '../../core/gating.ts';
   import { MASTERY, courseSkills, itemForSkill, skillTitle } from '../../core/mastery.ts';
   import { studyContext } from '../../core/studyContext.ts';
+  import { lessonDigest, lessonKeyPoints } from '../../core/reflect.ts';
+  import ReflectCard from '../../ui/ReflectCard.svelte';
   import type { BlockContext, MasteryTier } from '../../core/types.ts';
   import { getBlockRenderer } from '../../blocks/registry.ts';
   import UnknownBlock from '../../blocks/unknown/UnknownBlock.svelte';
@@ -284,6 +287,22 @@
           <p class="cf-muted">{t('player.noContent')}</p>
         {/each}
       </div>
+
+      {#if current.kind === 'lesson' && app.settings.showReflect && course}
+        {@const lesson = course.modules.flatMap((m) => m.lessons).find((l) => l.id === current.id)}
+        {#if lesson && lesson.blocks.length > 0}
+          {#key current.id}
+            <ReflectCard
+              topic={lesson.title}
+              points={lessonKeyPoints(lesson, app.settings.explanationLanguage)}
+              source={lessonDigest(lesson, app.settings.explanationLanguage)}
+              lang={app.settings.explanationLanguage}
+              reflection={progress?.reflections?.[lesson.id]}
+              onSave={(patch) => saveReflection(courseId, lesson.id, patch)}
+            />
+          {/key}
+        {/if}
+      {/if}
 
       {#if current.kind === 'lesson'}
         <section class="cf-card cf-notes" aria-labelledby="lesson-notes-title">
